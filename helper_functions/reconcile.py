@@ -388,30 +388,43 @@ def choose_amount_field(source_a_df, source_b_df, amount_field_a):
         return candidates[0]
 
     precision_a = _infer_decimal_precision(source_a_df[amount_field_a])
+    numeric_b = source_b_df.select_dtypes(include=["number"]).columns.tolist()
     best_field = None
     best_score = float("-inf")
 
     for field in candidates:
         precision_b = _infer_decimal_precision(source_b_df[field])
         score = 0
+        name = field.lower()
+
+        if "net" in name and "customer" not in name:
+            score += 12
+        elif "net" in name:
+            score += 8
+        if "settlement" in name:
+            score += 8
+        if "invoice" in name:
+            score += 3
+        if "gross" in name:
+            score -= 4
+        if "customer" in name:
+            score -= 8
+        if any(token in name for token in ["amount", "amt", "total", "value", "price", "cost", "charge"]):
+            score += 2
+        if field in numeric_b:
+            score += 2
+        else:
+            score -= 1
+
         if precision_a is not None and precision_b is not None:
             score -= abs(precision_a - precision_b)
-        name = field.lower()
-        if "net" in name:
-            score += 3
-        if "settlement" in name:
-            score += 2
-        if "gross" in name:
-            score -= 1
-        if "customer" in name:
-            score -= 2
-        if any(token in name for token in ["amount", "amt", "total", "value", "price", "cost", "charge"]):
-            score += 1
 
         if best_field is None or score > best_score:
             best_field = field
             best_score = score
 
+    if best_score < 0 and any("net" in f.lower() for f in candidates):
+        return next((f for f in candidates if "net" in f.lower()), best_field)
     return best_field or candidates[0]
 
 

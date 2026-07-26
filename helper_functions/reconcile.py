@@ -203,6 +203,82 @@ def infer_unmatched_reasons(
     return output
 
 
+def describe_source_for_summary(source):
+    if source is None:
+        return "Source information is unavailable."
+
+    fields = [field["name"] for field in source.get("fields", [])][:8]
+    field_list = ", ".join(fields) if fields else "no detected field names"
+    file_names = source.get("files") or [source.get("name", "Unnamed source")]
+    file_summary = ", ".join(file_names)
+    row_count = len(source.get("dataframe", pd.DataFrame())) if source.get("dataframe") is not None else 0
+    return (
+        f"{source.get('name', 'Source')} is a {source.get('type', 'unknown')} source containing {row_count:,} rows, "
+        f"parsed from {file_summary}. Key fields include {field_list}."
+    )
+
+
+def summarize_reconciliation_insights(
+    source_a,
+    source_b,
+    matched_amount_a,
+    matched_amount_b,
+    unmatched_total_a,
+    unmatched_total_b,
+    total_a,
+    total_b,
+    matched_count,
+    unmatched_count,
+    reason_counts,
+    top_reasons,
+):
+    prompt = [
+        {"role": "system", "content": "You are a factual financial reconciliation analyst. Produce a concise executive summary using only the data provided."},
+        {
+            "role": "user",
+            "content": (
+                "Review the two sources and the reconciliation results below. "
+                "Explain what each source is, why the two sources should or should not match, and highlight the main patterns and risks. "
+                "Do not invent details that are not present in the source descriptions. "
+                "Include specific facts about source type, row counts, matched amounts, unmatched exposure, and the top unmatched reasons. "
+                "Use clear language suitable for a business executive."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                "Source A description:\n" + describe_source_for_summary(source_a) + "\n\n"
+                "Source B description:\n" + describe_source_for_summary(source_b) + "\n\n"
+                "Reconciliation metrics:\n"
+                f"- Source A total amount: {total_a:,.2f}, matched amount: {matched_amount_a:,.2f}.\n"
+                f"- Source B total amount: {total_b:,.2f}, matched amount: {matched_amount_b:,.2f}.\n"
+                f"- Matched identifiers: {matched_count:,}, unmatched identifiers: {unmatched_count:,}.\n"
+                f"- Unmatched exposure in Source A: {unmatched_total_a:,.2f}; Source B: {unmatched_total_b:,.2f}.\n"
+            ),
+        },
+    ]
+
+    if not reason_counts.empty:
+        reason_lines = []
+        for _, row in reason_counts.head(5).iterrows():
+            reason_lines.append(f"- {row['reason']}: {int(row['count'])}")
+        prompt.append({
+            "role": "user",
+            "content": "Top unmatched reasons:\n" + "\n".join(reason_lines) + "\n",
+        })
+
+    if top_reasons:
+        prompt.append({
+            "role": "user",
+            "content": "Top reason labels: " + ", ".join(top_reasons) + ".\n",
+        })
+
+    prompt.append({"role": "user", "content": "Return a single concise executive summary. Do not add numbered JSON or markdown formatting."})
+
+    response_text = get_completion(prompt, temperature=0.2)
+    return response_text.strip()
+
+
 def normalize_score(value):
     if value is None:
         return None

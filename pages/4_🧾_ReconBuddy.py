@@ -9,6 +9,7 @@ from helper_functions.reconcile import (
     infer_unmatched_reasons,
     load_source,
     reconcile_by_identifier,
+    summarize_reconciliation_insights,
 )
 from helper_functions.utility import check_password
 
@@ -279,10 +280,22 @@ if uploaded_a and uploaded_b:
 
                     reason_counts = unmatched["reason"].value_counts().rename_axis("reason").reset_index(name="count")
                     top_reasons = reason_counts.head(3)["reason"].tolist()
-                    if top_reasons:
-                        summary_lines.append(f"Top unmatched reasons: {', '.join(top_reasons)}.")
 
-                    st.info("\n\n".join(summary_lines))
+                    summary_text = summarize_reconciliation_insights(
+                        source_a,
+                        source_b,
+                        matched_amount_a,
+                        matched_amount_b,
+                        unmatched_total_a,
+                        unmatched_total_b,
+                        totals["Total A"],
+                        totals["Total B"],
+                        matched_count,
+                        unmatched_count,
+                        reason_counts,
+                        top_reasons,
+                    )
+                    st.info(summary_text)
 
                     reason_counts_chart = reason_counts.copy()
                     reason_counts_chart.columns = ["Reason", "Count"]

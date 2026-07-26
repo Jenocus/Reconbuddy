@@ -236,17 +236,50 @@ def reconcile_records(df_a, df_b, key_a, key_b, amount_a, amount_b):
     agg_a = a.groupby("identifier", dropna=False, sort=False)["amount_a"].sum().reset_index()
     agg_b = b.groupby("identifier", dropna=False, sort=False)["amount_b"].sum().reset_index()
 
-    all_identifiers = sorted(set(agg_a["identifier"].unique()) | set(agg_b["identifier"].unique()))
     rows = []
-    for identifier in all_identifiers:
-        row_a = agg_a[agg_a["identifier"] == identifier]
-        row_b = agg_b[agg_b["identifier"] == identifier]
+    used_a = set()
+    used_b = set()
+
+    for idx_b, row_b in agg_b.iterrows():
+        b_id = str(row_b["identifier"])
+        match_idx_a = None
+        for idx_a, row_a in agg_a.iterrows():
+            if idx_a in used_a:
+                continue
+            a_id = str(row_a["identifier"])
+            if a_id == b_id or (b_id and a_id and b_id.lower() in a_id.lower()) or (a_id and b_id and a_id.lower() in b_id.lower()):
+                match_idx_a = idx_a
+                break
+
+        if match_idx_a is not None:
+            used_a.add(match_idx_a)
+            used_b.add(idx_b)
+            matched_a = agg_a.loc[match_idx_a]
+            rows.append({
+                "identifier": matched_a["identifier"],
+                "amount_a": float(matched_a["amount_a"]),
+                "amount_b": float(row_b["amount_b"]),
+                "left_present": True,
+                "right_present": True,
+            })
+        else:
+            rows.append({
+                "identifier": b_id,
+                "amount_a": None,
+                "amount_b": float(row_b["amount_b"]),
+                "left_present": False,
+                "right_present": True,
+            })
+
+    for idx_a, row_a in agg_a.iterrows():
+        if idx_a in used_a:
+            continue
         rows.append({
-            "identifier": identifier,
-            "amount_a": float(row_a["amount_a"].iloc[0]) if not row_a.empty else None,
-            "amount_b": float(row_b["amount_b"].iloc[0]) if not row_b.empty else None,
-            "left_present": not row_a.empty,
-            "right_present": not row_b.empty,
+            "identifier": row_a["identifier"],
+            "amount_a": float(row_a["amount_a"]),
+            "amount_b": None,
+            "left_present": True,
+            "right_present": False,
         })
 
     if not rows:

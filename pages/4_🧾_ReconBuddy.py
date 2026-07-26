@@ -104,8 +104,8 @@ with st.expander("How it works"):
         "You can choose a different identifier candidate and compare totals for each source."
     )
 
-uploaded_a = st.file_uploader("Upload first source (1 or 2 files)", type=["pdf", "csv", "xls", "xlsx"], accept_multiple_files=True, key="recon_a")
-uploaded_b = st.file_uploader("Upload second source (1 or 2 files)", type=["pdf", "csv", "xls", "xlsx"], accept_multiple_files=True, key="recon_b")
+uploaded_a = st.file_uploader("Upload Source A (1 or 2 files)", type=["pdf", "csv", "xls", "xlsx"], accept_multiple_files=True, key="recon_a")
+uploaded_b = st.file_uploader("Upload Source B (1 or 2 files)", type=["pdf", "csv", "xls", "xlsx"], accept_multiple_files=True, key="recon_b")
 business_context = st.text_area(
     "Optional business context",
     value="Example: Reconcile amounts using the shared transaction or trace identifier.",
@@ -237,7 +237,7 @@ if uploaded_a and uploaded_b:
 
                 col1, col2 = st.columns(2)
                 with col1:
-                    amount_a = st.selectbox("Select amount field in first report", amount_fields_a, index=amount_fields_a.index(default_a))
+                    amount_a = st.selectbox("Select amount field in Source A", amount_fields_a, index=amount_fields_a.index(default_a))
                     tolerance = st.number_input(
                         "Amount tolerance",
                         min_value=0.0,
@@ -247,10 +247,7 @@ if uploaded_a and uploaded_b:
                         format="%.4f",
                     )
                 with col2:
-                    amount_b = st.selectbox("Select amount field in second report", amount_fields_b, index=amount_fields_b.index(default_b))
-
-                match_pct = amount_field_match_score(amount_a, amount_b, source_a["dataframe"], source_b["dataframe"])
-                st.markdown(f"**Amount field pair match:** {match_pct}%")
+                    amount_b = st.selectbox("Select amount field in Source B", amount_fields_b, index=amount_fields_b.index(default_b))
 
                 if st.button("Run Reconciliation"):
                     missing_fields = []

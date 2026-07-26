@@ -26,83 +26,20 @@ def parse_pdf_text_table(raw_text: str) -> pd.DataFrame:
     lines = [line.strip() for line in raw_text.splitlines() if line.strip()]
     if not lines:
         return pd.DataFrame()
-    # Heuristics attempt: 1) pipe-separated, 2) comma-separated, 3) multi-space (fixed-width) columns
-    # 1) Pipe-separated table detection
-    pipe_counts = [line.count("|") for line in lines]
-    if any(c > 0 for c in pipe_counts):
-        # prefer when a majority of non-empty lines contain pipes
-        pipe_lines = [line for line in lines if "|" in line]
-        split_lines = [ [cell.strip() for cell in line.split("|") if cell is not None] for line in pipe_lines ]
-        lengths = [len(r) for r in split_lines]
-        if lengths and max(lengths) >= 2 and (sum(1 for l in lengths if l == lengths[0]) / len(lengths)) > 0.5:
-            header = split_lines[0]
-            data_rows = [row for row in split_lines[1:] if len(row) == len(header)]
-            if len(header) >= 2 and len(data_rows) >= 1:
-                header_tokens = [re.sub(r"[^\w ]+", "", cell).strip() or f"column_{i+1}" for i, cell in enumerate(header)]
-                return pd.DataFrame(data_rows, columns=header_tokens)
 
-    # 2) Comma-separated inside PDF text
-    comma_counts = [line.count(",") for line in lines]
-    if any(c > 0 for c in comma_counts):
-        # if many lines share the same comma count, assume CSV-like structure
-        most_common = Counter(comma_counts).most_common(1)
-        if most_common and most_common[0][0] > 0:
-            expected_commas = most_common[0][0]
-            csv_lines = [line for line in lines if line.count(",") == expected_commas]
-            if len(csv_lines) >= 3:
-                import csv
-                reader = csv.reader(csv_lines)
-                rows = [ [cell.strip() for cell in r] for r in reader ]
-                header = rows[0]
-                data_rows = [r for r in rows[1:] if len(r) == len(header)]
-                if len(header) >= 2 and len(data_rows) >= 1:
-                    header_tokens = [re.sub(r"[^\w ]+", "", cell).strip() or f"column_{i+1}" for i, cell in enumerate(header)]
-                    return pd.DataFrame(data_rows, columns=header_tokens)
-
-    # 3) Fallback: split on runs of 2+ spaces (fixed-width-like tables)
     splitter = re.compile(r"\s{2,}")
     split_lines = [splitter.split(line) for line in lines]
 
-    def _is_header_row(cells):
-        # header rows typically have more non-numeric tokens than numeric tokens
-        if not cells:
-            return False
-        non_numeric = 0
-        numeric = 0
-        for cell in cells:
-            token = re.sub(r"[^0-9\.-]+", "", cell or "").strip()
-            if token == "":
-                non_numeric += 1
-            else:
-                # treat as numeric if token parses as number
-                try:
-                    float(token)
-                    numeric += 1
-                except Exception:
-                    non_numeric += 1
-        return non_numeric >= max(1, numeric)
-
     if len(split_lines) >= 2:
-        # Choose the most likely header row among the first few rows
-        candidate_header_idx = None
-        for idx in range(min(5, len(split_lines))):
-            if _is_header_row(split_lines[idx]):
-                candidate_header_idx = idx
-                break
-        if candidate_header_idx is None:
-            # fallback: pick the row with the most non-numeric cells among the first 5
-            scores = [(i, sum(1 for c in row if not re.fullmatch(r"[\d\.,\-]+", (c or "").strip()))) for i, row in enumerate(split_lines[:5])]
-            scores.sort(key=lambda x: x[1], reverse=True)
-            candidate_header_idx = scores[0][0]
-
-        header = split_lines[candidate_header_idx]
-        data_rows = [row for i, row in enumerate(split_lines) if i > candidate_header_idx and len(row) == len(header)]
+        header = split_lines[0]
+        data_rows = [row for row in split_lines[1:] if len(row) == len(header)]
         if len(header) >= 2 and len(data_rows) >= max(2, len(split_lines) // 3):
-            header_tokens = [re.sub(r"[^\w ]+", "", cell).strip() for cell in header]
-            columns = [col or f"column_{i+1}" for i, col in enumerate(header_tokens)]
-            return pd.DataFrame(data_rows, columns=columns)
+            header_tokens = [cell.strip() for cell in header]
+            non_numeric_header = sum(1 for cell in header_tokens if not re.fullmatch(r"[\d\W_]+", cell))
+            if non_numeric_header >= len(header) / 2:
+                columns = [col or f"column_{i+1}" for i, col in enumerate(header_tokens)]
+                return pd.DataFrame(data_rows, columns=columns)
 
-    # 4) Try to find any repeated row token lengths and use that as columns
     lengths = [len(row) for row in split_lines]
     most_common = Counter(lengths).most_common(1)
     if most_common and most_common[0][0] > 1 and most_common[0][1] >= 3:
@@ -423,20 +360,10 @@ def detect_amount_fields(df):
     return df.columns.tolist()
 
 
-def _clean_numeric_series(series):
-    if series is None:
-        return pd.Series(dtype="float64")
-    cleaned = series.astype(str).str.strip()
-    cleaned = cleaned.str.replace(r"\(([^)]+)\)", r"-\1", regex=True)
-    cleaned = cleaned.str.replace(r"[^0-9\.\-\,]+", "", regex=True)
-    cleaned = cleaned.str.replace(",", "", regex=False)
-    return pd.to_numeric(cleaned, errors="coerce")
-
-
 def _infer_decimal_precision(series):
     if series is None:
         return None
-    values = _clean_numeric_series(series).dropna()
+    values = pd.to_numeric(series, errors="coerce").dropna()
     if values.empty:
         return None
     precisions = []
@@ -460,22 +387,15 @@ def choose_best_amount_field_by_precision(df, candidate_fields=None):
     if not fields:
         return None
 
-    normalized = [field for field in fields if field in df.columns]
-    if not normalized:
-        return None
-
-    # Prefer explicit net fields first.
-    net_candidates = [field for field in normalized if "net" in field.lower()]
-    if net_candidates:
-        normalized = net_candidates
-
-    non_customer_fields = [field for field in normalized if "customer" not in field.lower()]
+    non_customer_fields = [field for field in fields if "customer" not in field.lower()]
     if non_customer_fields:
-        normalized = non_customer_fields
+        fields = non_customer_fields
 
     best_field = None
     best_precision = -1
-    for field in normalized:
+    for field in fields:
+        if field not in df.columns:
+            continue
         precision = _infer_decimal_precision(df[field])
         if precision is None:
             precision = -1
@@ -483,7 +403,13 @@ def choose_best_amount_field_by_precision(df, candidate_fields=None):
             best_precision = precision
             best_field = field
 
-    return best_field or normalized[0]
+    if best_field and "customer" in best_field.lower() and len(fields) > 1:
+        other_fields = [f for f in fields if f != best_field]
+        secondary = choose_best_amount_field_by_precision(df, other_fields)
+        if secondary is not None:
+            return secondary
+
+    return best_field or fields[0]
 
 
 def choose_amount_field(source_a_df, source_b_df, amount_field_a):
@@ -493,11 +419,6 @@ def choose_amount_field(source_a_df, source_b_df, amount_field_a):
     non_customer_candidates = [field for field in candidates if "customer" not in field.lower()]
     if non_customer_candidates:
         candidates = non_customer_candidates
-
-    net_candidates = [field for field in candidates if "net" in field.lower()]
-    if net_candidates:
-        return choose_best_amount_field_by_precision(source_b_df, net_candidates)
-
     if amount_field_a not in source_a_df.columns:
         return choose_best_amount_field_by_precision(source_b_df, candidates)
 
@@ -586,7 +507,7 @@ def group_amount_by_identifier(df, id_field, amount_field):
 
     grouped = df[[id_field, amount_field]].copy()
     grouped = grouped.dropna(subset=[id_field])
-    grouped[amount_field] = _clean_numeric_series(grouped[amount_field]).fillna(0)
+    grouped[amount_field] = pd.to_numeric(grouped[amount_field], errors="coerce").fillna(0)
     grouped = grouped.groupby(id_field, dropna=False)[amount_field].sum().reset_index()
     grouped = grouped.sort_values(by=amount_field, ascending=False)
     grouped.columns = ["identifier", "total_amount"]
@@ -633,8 +554,8 @@ def reconcile_records(df_a, df_b, key_a, key_b, amount_a, amount_b):
     b = df_b[[key_b, amount_b]].copy()
     a.columns = ["identifier", "amount_a"]
     b.columns = ["identifier", "amount_b"]
-    a["amount_a"] = _clean_numeric_series(a["amount_a"])
-    b["amount_b"] = _clean_numeric_series(b["amount_b"])
+    a["amount_a"] = pd.to_numeric(a["amount_a"], errors="coerce")
+    b["amount_b"] = pd.to_numeric(b["amount_b"], errors="coerce")
 
     a = a.dropna(subset=["identifier"]).astype({"identifier": str})
     b = b.dropna(subset=["identifier"]).astype({"identifier": str})

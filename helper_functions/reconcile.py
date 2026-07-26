@@ -172,8 +172,12 @@ def infer_unmatched_reasons(
     rows = sample.to_dict(orient="records")
     prompt = (
         "You are a financial reconciliation analyst. Review the following unmatched reconciliation rows from two sources. "
-        "For each row, infer a likely cause for why the amounts do not match. "
-        "Possible reasons include timing differences, partial settlement, missing invoice, duplicate posting, currency variation, fees, or data extraction mismatches. "
+        "For each row, infer the most likely reason the amounts do not align, focusing on timing and period differences. "
+        "Assume the sources may represent different reporting windows (monthly batches, rolling periods, or statement dates). "
+        "Identify date-related fields in the samples and use them to determine whether one report is outside the other report's period. "
+        "If one source appears to include a date outside the other source's reporting period, label it as a timing difference. "
+        "Prefer explanations such as timing difference, period mismatch, settlement delay, duplicate posting, currency variation, fees, or data extraction mismatches. "
+        "Do not use missing invoice as a reason. "
         "Respond only with valid JSON in this format: [\n"
         "  { \"identifier\": ..., \"suggested_reason\": ... },\n"
         "]\n"

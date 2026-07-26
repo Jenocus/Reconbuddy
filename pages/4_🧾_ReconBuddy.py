@@ -161,7 +161,7 @@ if uploaded_a and uploaded_b:
                     st.write("PDF text excerpt (table extraction failed):")
                     st.write(source_b['raw_text'][:1000])
             else:
-                st.write(f"Fields: {[field['name'] for field in source_b['fields']}]" )
+                st.write(f"Fields: {[field['name'] for field in source_b['fields']]}")
 
         if (
             "recon_candidates" not in st.session_state

@@ -266,19 +266,55 @@ def merge_identifier_groups(grouped_a, grouped_b):
     grouped_a = grouped_a[["identifier", "total_amount_a"]]
     grouped_b = grouped_b[["identifier", "total_amount_b"]]
 
-    joined_rows = []
-    for row_a, row_b in zip_longest(grouped_a.to_dict("records"), grouped_b.to_dict("records")):
-        if row_a and row_b:
-            identifier = row_a["identifier"] if row_a["identifier"] == row_b["identifier"] else None
-        elif row_a:
-            identifier = row_a["identifier"]
-        else:
-            identifier = row_b["identifier"]
+    exact_ids = set(grouped_a["identifier"].astype(str).unique()) & set(grouped_b["identifier"].astype(str).unique())
+    if exact_ids:
+        joined = pd.merge(
+            grouped_a,
+            grouped_b,
+            on="identifier",
+            how="outer",
+        )
+        joined["total_amount_a"] = joined["total_amount_a"].fillna(0)
+        joined["total_amount_b"] = joined["total_amount_b"].fillna(0)
+        joined["difference"] = joined["total_amount_a"] - joined["total_amount_b"]
+        return joined
 
+    joined_rows = []
+    used_a = set()
+    used_b = set()
+    for index_b, row_b in grouped_b.iterrows():
+        b_id = str(row_b["identifier"])
+        match_index_a = None
+        for index_a, row_a in grouped_a.iterrows():
+            if index_a in used_a:
+                continue
+            a_id = str(row_a["identifier"])
+            if b_id and a_id and (b_id.lower() in a_id.lower() or a_id.lower() in b_id.lower()):
+                match_index_a = index_a
+                break
+
+        if match_index_a is not None:
+            used_a.add(match_index_a)
+            used_b.add(index_b)
+            joined_rows.append({
+                "identifier": grouped_a.loc[match_index_a, "identifier"],
+                "total_amount_a": grouped_a.loc[match_index_a, "total_amount_a"],
+                "total_amount_b": row_b["total_amount_b"],
+            })
+        else:
+            joined_rows.append({
+                "identifier": b_id,
+                "total_amount_a": 0,
+                "total_amount_b": row_b["total_amount_b"],
+            })
+
+    for index_a, row_a in grouped_a.iterrows():
+        if index_a in used_a:
+            continue
         joined_rows.append({
-            "identifier": identifier,
-            "total_amount_a": row_a["total_amount_a"] if row_a else 0,
-            "total_amount_b": row_b["total_amount_b"] if row_b else 0,
+            "identifier": row_a["identifier"],
+            "total_amount_a": row_a["total_amount_a"],
+            "total_amount_b": 0,
         })
 
     joined = pd.DataFrame(joined_rows)

@@ -380,6 +380,28 @@ def _infer_decimal_precision(series):
     return precisions[len(precisions) // 2]
 
 
+def choose_best_amount_field_by_precision(df, candidate_fields=None):
+    if df is None:
+        return None
+    fields = candidate_fields if candidate_fields is not None else detect_amount_fields(df)
+    if not fields:
+        return None
+
+    best_field = None
+    best_precision = -1
+    for field in fields:
+        if field not in df.columns:
+            continue
+        precision = _infer_decimal_precision(df[field])
+        if precision is None:
+            precision = -1
+        if precision > best_precision:
+            best_precision = precision
+            best_field = field
+
+    return best_field or fields[0]
+
+
 def choose_amount_field(source_a_df, source_b_df, amount_field_a):
     candidates = detect_amount_fields(source_b_df)
     if not candidates:
@@ -419,7 +441,12 @@ def choose_amount_field(source_a_df, source_b_df, amount_field_a):
         if precision_a is not None and precision_b is not None:
             score -= abs(precision_a - precision_b)
 
-        if best_field is None or score > best_score:
+        if best_field is None or score > best_score or (
+            score == best_score
+            and precision_b is not None
+            and _infer_decimal_precision(source_b_df[best_field]) is not None
+            and precision_b > _infer_decimal_precision(source_b_df[best_field])
+        ):
             best_field = field
             best_score = score
 

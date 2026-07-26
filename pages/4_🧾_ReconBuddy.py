@@ -227,10 +227,12 @@ if uploaded_a and uploaded_b:
             else:
                 default_amount_a = detect_amount_fields(source_a["dataframe"])
                 default_amount_b = detect_amount_fields(source_b["dataframe"])
-                default_a = default_amount_a[0] if default_amount_a else amount_fields_a[0]
+                default_a = choose_best_amount_field_by_precision(source_a["dataframe"], default_amount_a)
                 default_b = choose_amount_field(source_a["dataframe"], source_b["dataframe"], default_a)
                 if default_b is None:
-                    default_b = default_amount_b[0] if default_amount_b else amount_fields_b[0]
+                    default_b = choose_best_amount_field_by_precision(source_b["dataframe"], default_amount_b)
+                    if default_b is None:
+                        default_b = amount_fields_b[0]
 
                 col1, col2 = st.columns(2)
                 with col1:

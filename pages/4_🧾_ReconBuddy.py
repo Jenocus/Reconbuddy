@@ -1,5 +1,6 @@
 import altair as alt
 import pandas as pd
+import re
 import streamlit as st
 from helper_functions.reconcile import (
     analyze_sources,
@@ -25,6 +26,14 @@ def format_dataframe_numbers(df):
         return df
     fmt = {col: "{:,.2f}" for col in numeric_cols}
     return df.style.format(fmt)
+
+
+def normalize_column_name(name: str) -> str:
+    if name is None:
+        return ""
+    normalized = re.sub(r"[^a-z0-9]+", "_", str(name).strip().lower())
+    normalized = re.sub(r"_+", "_", normalized).strip("_")
+    return normalized
 
 
 def combine_uploaded_sources(uploaded_files, source_label):
@@ -61,13 +70,26 @@ def combine_uploaded_sources(uploaded_files, source_label):
         fields.extend(source["fields"])
         raw_text_parts.append(source.get("raw_text", ""))
 
-    combined_df = pd.concat(dataframes, ignore_index=True)
+    # Normalize column names across uploaded files so totals reflect all joined sources.
+    normalized_frames = []
+    for df in dataframes:
+        renamed = {col: normalize_column_name(col) for col in df.columns}
+        normalized_frames.append(df.rename(columns=renamed))
+
+    combined_df = pd.concat(normalized_frames, ignore_index=True)
+    display_names = {}
+    for field in fields:
+        normalized_name = normalize_column_name(field["name"])
+        if normalized_name not in display_names:
+            display_names[normalized_name] = field["name"]
+
+    combined_df = combined_df.rename(columns={norm: display_name for norm, display_name in display_names.items()})
     combined_fields = []
     seen = set()
-    for field in fields:
-        if field["name"] not in seen:
-            seen.add(field["name"])
-            combined_fields.append(field)
+    for norm, display_name in display_names.items():
+        if norm not in seen:
+            seen.add(norm)
+            combined_fields.append({"name": display_name, "examples": []})
 
     combined_type = file_types[0] if len(set(file_types)) == 1 else "Combined"
     return {

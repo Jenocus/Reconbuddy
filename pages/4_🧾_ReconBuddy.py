@@ -70,12 +70,17 @@ if uploaded_a and uploaded_b:
                 format_func=lambda item: item["label"],
             )
 
-            amount_fields_a = detect_amount_fields(source_a["dataframe"])
-            amount_fields_b = detect_amount_fields(source_b["dataframe"])
+            amount_fields_a = list(source_a["dataframe"].columns)
+            amount_fields_b = list(source_b["dataframe"].columns)
+
+            default_amount_a = detect_amount_fields(source_a["dataframe"])
+            default_amount_b = detect_amount_fields(source_b["dataframe"])
+            default_a = default_amount_a[0] if default_amount_a else amount_fields_a[0]
+            default_b = default_amount_b[0] if default_amount_b else amount_fields_b[0]
 
             col1, col2 = st.columns(2)
             with col1:
-                amount_a = st.selectbox("Amount field in first report", amount_fields_a)
+                amount_a = st.selectbox("Amount field in first report", amount_fields_a, index=amount_fields_a.index(default_a))
                 tolerance = st.number_input(
                     "Amount tolerance",
                     min_value=0.0,
@@ -85,7 +90,7 @@ if uploaded_a and uploaded_b:
                     format="%.4f",
                 )
             with col2:
-                amount_b = st.selectbox("Amount field in second report", amount_fields_b)
+                amount_b = st.selectbox("Amount field in second report", amount_fields_b, index=amount_fields_b.index(default_b))
 
             if st.button("Run Reconciliation"):
                 result = reconcile_by_identifier(

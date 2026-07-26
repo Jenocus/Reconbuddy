@@ -171,7 +171,7 @@ if uploaded_a and uploaded_b:
 
             col1, col2 = st.columns(2)
             with col1:
-                amount_a = st.selectbox("Amount field in first report", amount_fields_a, index=amount_fields_a.index(default_a))
+                amount_a = st.selectbox("Select amount field in Source A", amount_fields_a, index=amount_fields_a.index(default_a))
                 tolerance = st.number_input(
                     "Amount tolerance",
                     min_value=0.0,
@@ -181,7 +181,7 @@ if uploaded_a and uploaded_b:
                     format="%.4f",
                 )
             with col2:
-                amount_b = st.selectbox("Amount field in second report", amount_fields_b, index=amount_fields_b.index(default_b))
+                amount_b = st.selectbox("Select amount field in Source B", amount_fields_b, index=amount_fields_b.index(default_b))
 
             if st.button("Run Reconciliation"):
                 result = reconcile_by_identifier(

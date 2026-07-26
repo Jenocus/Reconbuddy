@@ -85,8 +85,8 @@ with st.expander("How it works"):
         "It does not rely on hard-coded field name matching, so it can detect a shared identifier even when it is embedded inside a description or other text field."
     )
 
-uploaded_a = st.file_uploader("Upload first source (1 or 2 files)", type=["pdf", "csv", "xls", "xlsx"], accept_multiple_files=True, key="source_a")
-uploaded_b = st.file_uploader("Upload second source (1 or 2 files)", type=["pdf", "csv", "xls", "xlsx"], accept_multiple_files=True, key="source_b")
+uploaded_a = st.file_uploader("Upload Source A (1 or 2 files)", type=["pdf", "csv", "xls", "xlsx"], accept_multiple_files=True, key="source_a")
+uploaded_b = st.file_uploader("Upload Source B (1 or 2 files)", type=["pdf", "csv", "xls", "xlsx"], accept_multiple_files=True, key="source_b")
 business_context = st.text_area(
     "Optional business context",
     value="Example: Match transaction and audit records to reconcile trace IDs and descriptions.",

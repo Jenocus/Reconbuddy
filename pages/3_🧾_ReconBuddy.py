@@ -5,21 +5,21 @@ from helper_functions.utility import check_password
 # Page configuration
 st.set_page_config(
     layout="centered",
-    page_title="ReconBuddy",
+    page_title="Share Identifier Search",
     page_icon="🧾",
 )
 
 if not check_password():
     st.stop()
 
-st.title("🧾 ReconBuddy")
+st.title("🧾 Share Identifier Search")
 st.write(
-    "Upload two reports in PDF, Excel, or CSV format and ReconBuddy will identify matching fields or shared identifiers across both sources."
+    "Upload two reports in PDF, Excel, or CSV format and Share Identifier Search will identify matching fields or shared identifiers across both sources."
 )
 
 with st.expander("How it works"):
     st.write(
-        "ReconBuddy uses semantic analysis and an LLM to map fields across heterogeneous documents. "
+        "Share Identifier Search uses semantic analysis and an LLM to map fields across heterogeneous documents. "
         "It does not rely on hard-coded field name matching, so it can detect a shared identifier even when it is embedded inside a description or other text field."
     )
 
@@ -36,31 +36,31 @@ if uploaded_a and uploaded_b:
         source_a = load_source(uploaded_a)
         source_b = load_source(uploaded_b)
 
-    st.subheader("Source summaries")
-    col1, col2 = st.columns(2)
-    with col1:
-        st.write(f"**{source_a['name']}**")
-        st.write(f"Type: {source_a['type']}")
-        if source_a["fields"]:
-            st.write("Fields:")
-            for field in source_a["fields"]:
-                st.write(f"- {field['name']}: {field['examples']}")
-        if source_a["type"] == "PDF":
-            st.write("PDF text excerpt:")
-            st.write(source_a["raw_text"][:1000])
+    with st.expander("Source summaries", expanded=False):
+        col1, col2 = st.columns(2)
+        with col1:
+            st.write(f"**{source_a['name']}**")
+            st.write(f"Type: {source_a['type']}")
+            if source_a["fields"]:
+                st.write("Fields:")
+                for field in source_a["fields"]:
+                    st.write(f"- {field['name']}: {field['examples']}")
+            if source_a["type"] == "PDF":
+                st.write("PDF text excerpt:")
+                st.write(source_a["raw_text"][:1000])
 
-    with col2:
-        st.write(f"**{source_b['name']}**")
-        st.write(f"Type: {source_b['type']}")
-        if source_b["fields"]:
-            st.write("Fields:")
-            for field in source_b["fields"]:
-                st.write(f"- {field['name']}: {field['examples']}")
-        if source_b["type"] == "PDF":
-            st.write("PDF text excerpt:")
-            st.write(source_b["raw_text"][:1000])
+        with col2:
+            st.write(f"**{source_b['name']}**")
+            st.write(f"Type: {source_b['type']}")
+            if source_b["fields"]:
+                st.write("Fields:")
+                for field in source_b["fields"]:
+                    st.write(f"- {field['name']}: {field['examples']}")
+            if source_b["type"] == "PDF":
+                st.write("PDF text excerpt:")
+                st.write(source_b["raw_text"][:1000])
 
-    if st.button("Run reconciliation"):
+    if st.button("Share Identifier Search"):
         with st.spinner("Analyzing sources with LLM..."):
             analysis = analyze_sources(source_a, source_b, business_context)
 

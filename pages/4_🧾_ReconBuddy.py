@@ -219,16 +219,18 @@ if uploaded_a and uploaded_b:
                         pct_matched_b = matched_amount_b / totals["Total B"] * 100
                     else:
                         pct_matched_b = 0.0
+                    def matched_badge(pct):
+                        color = "green" if pct > 80 else "orange" if pct > 50 else "red"
+                        return f"<span style='color:{color};font-size:20px;font-weight:600;'>{pct:.1f}% matched</span>"
+
                     row_metrics = st.columns(2)
-                    row_metrics[0].metric(
-                        "Rows in Source A",
-                        f"{len(source_a['dataframe']):,}",
-                        f"{pct_matched_a:.1f}% matched",
+                    row_metrics[0].markdown(
+                        f"**Rows in Source A**<br>{len(source_a['dataframe']):,}<br>{matched_badge(pct_matched_a)}",
+                        unsafe_allow_html=True,
                     )
-                    row_metrics[1].metric(
-                        "Rows in Source B",
-                        f"{len(source_b['dataframe']):,}",
-                        f"{pct_matched_b:.1f}% matched",
+                    row_metrics[1].markdown(
+                        f"**Rows in Source B**<br>{len(source_b['dataframe']):,}<br>{matched_badge(pct_matched_b)}",
+                        unsafe_allow_html=True,
                     )
 
                     suggestion_map = infer_unmatched_reasons(
@@ -282,7 +284,6 @@ if uploaded_a and uploaded_b:
 
                     st.info("\n\n".join(summary_lines))
 
-                    chart_cols = st.columns(2)
                     reason_counts_chart = reason_counts.copy()
                     reason_counts_chart.columns = ["Reason", "Count"]
                     exposure_data = pd.DataFrame(
@@ -294,24 +295,25 @@ if uploaded_a and uploaded_b:
                     )
 
                     if not reason_counts.empty:
-                        chart_cols[0].subheader("Unmatched reason counts")
+                        st.subheader("Unmatched reason counts")
                         reason_chart = alt.Chart(reason_counts_chart).mark_bar().encode(
                             x=alt.X("Count:Q", title="Count"),
                             y=alt.Y("Reason:N", sort="-x", title="Reason"),
                             tooltip=["Reason", "Count"],
-                        )
-                        chart_cols[0].altair_chart(reason_chart, use_container_width=True)
+                        ).properties(height=300)
+                        st.altair_chart(reason_chart, use_container_width=True)
                     else:
-                        chart_cols[0].info("No unmatched reason counts available.")
+                        st.info("No unmatched reason counts available.")
 
-                    chart_cols[1].subheader("Amount exposure by source")
+                    st.write("---")
+                    st.subheader("Amount exposure by source")
                     exposure_chart = alt.Chart(exposure_data).mark_bar().encode(
                         x=alt.X("Amount:Q", title="Amount"),
                         y=alt.Y("Source:N", sort="-x", title="Source"),
-                        color=alt.Color("Type:N", title="Type"),
+                        color=alt.Color("Type:N", title="Type", scale=alt.Scale(range=["#1f77b4", "#ff7f0e"])),
                         tooltip=["Source", "Type", "Amount"],
-                    ).properties(height=250)
-                    chart_cols[1].altair_chart(exposure_chart, use_container_width=True)
+                    ).properties(height=300)
+                    st.altair_chart(exposure_chart, use_container_width=True)
 
                     unmatched_ids_a = unmatched[unmatched["total_amount_a"].notna()]["identifier"].astype(str).unique().tolist()
                     unmatched_ids_b = unmatched[unmatched["total_amount_b"].notna()]["identifier"].astype(str).unique().tolist()

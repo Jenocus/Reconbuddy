@@ -212,14 +212,20 @@ if uploaded_a and uploaded_b:
                     matched = details[details["status"] == "Matched"]
                     matched_amount_a = matched["total_amount_a"].sum()
                     matched_amount_b = matched["total_amount_b"].sum()
-                    if totals["Total A"] != 0:
-                        pct_unmatched_rows_a = unmatched_count / len(source_a["dataframe"]) * 100 if len(source_a["dataframe"]) else 0.0
+
+                    unmatched_total_a = unmatched["total_amount_a"].sum()
+                    unmatched_total_b = unmatched["total_amount_b"].sum()
+                    unmatched_count = int(unmatched.shape[0])
+
+                    if len(source_a["dataframe"]):
+                        pct_unmatched_rows_a = unmatched_count / len(source_a["dataframe"]) * 100
                     else:
                         pct_unmatched_rows_a = 0.0
-                    if totals["Total B"] != 0:
-                        pct_unmatched_rows_b = unmatched_count / len(source_b["dataframe"]) * 100 if len(source_b["dataframe"]) else 0.0
+                    if len(source_b["dataframe"]):
+                        pct_unmatched_rows_b = unmatched_count / len(source_b["dataframe"]) * 100
                     else:
                         pct_unmatched_rows_b = 0.0
+
                     def unmatched_badge(pct):
                         color = "green" if pct < 20 else "orange" if pct < 50 else "red"
                         return f"<span style='color:{color};font-size:20px;font-weight:600;'>{pct:.1f}% unmatched</span>"

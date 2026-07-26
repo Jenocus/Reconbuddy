@@ -31,11 +31,13 @@ def combine_uploaded_sources(uploaded_files, source_label):
     dataframes = []
     fields = []
     raw_text_parts = []
+    file_types = []
 
     file_names = []
     file_row_counts = []
     for uploaded_file in uploaded_files:
         source = load_source(uploaded_file)
+        file_types.append(source.get("type"))
         if source.get("dataframe") is None:
             return {
                 "name": source_label,
@@ -46,6 +48,8 @@ def combine_uploaded_sources(uploaded_files, source_label):
                 "dataframe": None,
                 "files": file_names,
                 "file_rows": file_row_counts,
+                "file_types": file_types,
+                "has_pdf": any(t == "PDF" for t in file_types),
             }
         df = source["dataframe"]
         file_names.append(uploaded_file.name)
@@ -62,15 +66,18 @@ def combine_uploaded_sources(uploaded_files, source_label):
             seen.add(field["name"])
             combined_fields.append(field)
 
+    combined_type = file_types[0] if len(set(file_types)) == 1 else "Combined"
     return {
         "name": source_label,
-        "type": "Combined",
+        "type": combined_type,
         "fields": combined_fields,
         "sample_rows": combined_df.head(5).astype(str).to_dict(orient="records"),
         "raw_text": "\n\n".join(raw_text_parts),
         "dataframe": combined_df,
         "files": file_names,
         "file_rows": file_row_counts,
+        "file_types": file_types,
+        "has_pdf": any(t == "PDF" for t in file_types),
     }
 
 # Page configuration
@@ -127,7 +134,15 @@ if uploaded_a and uploaded_b:
             if source_a.get("files"):
                 source_a_files = [f"{name} ({rows} rows)" for name, rows in zip(source_a['files'], source_a.get('file_rows', []))]
                 st.write(f"Combined from: {', '.join(source_a_files)}")
-            st.write(f"Fields: {[field['name'] for field in source_a['fields']]}")
+            if source_a.get('dataframe') is not None and not source_a['dataframe'].empty:
+                st.write(f"Detected headers: {list(source_a['dataframe'].columns)}")
+                st.write("Extracted table sample:")
+                st.dataframe(format_dataframe_numbers(source_a['dataframe'].head(5)))
+            elif source_a.get('has_pdf'):
+                st.write("PDF text excerpt (table extraction failed):")
+                st.write(source_a['raw_text'][:1000])
+            else:
+                st.write(f"Fields: {[field['name'] for field in source_a['fields']]}")
             st.write(f"**{source_b['name']}**")
             st.write(f"Type: {source_b['type']}")
             st.markdown(
@@ -137,7 +152,16 @@ if uploaded_a and uploaded_b:
             if source_b.get("files"):
                 source_b_files = [f"{name} ({rows} rows)" for name, rows in zip(source_b['files'], source_b.get('file_rows', []))]
                 st.write(f"Combined from: {', '.join(source_b_files)}")
-            st.write(f"Fields: {[field['name'] for field in source_b['fields']]}" )
+            if source_b['type'] == 'PDF':
+                if source_b.get('dataframe') is not None and not source_b['dataframe'].empty:
+                    st.write(f"Detected headers: {list(source_b['dataframe'].columns)}")
+                    st.write("Extracted table sample:")
+                    st.dataframe(format_dataframe_numbers(source_b['dataframe'].head(5)))
+                else:
+                    st.write("PDF text excerpt (table extraction failed):")
+                    st.write(source_b['raw_text'][:1000])
+            else:
+                st.write(f"Fields: {[field['name'] for field in source_b['fields']}]" )
 
         if (
             "recon_candidates" not in st.session_state

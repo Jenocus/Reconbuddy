@@ -32,11 +32,13 @@ def parse_pdf_text_table(raw_text: str) -> pd.DataFrame:
 
     if len(split_lines) >= 2:
         header = split_lines[0]
-        if len(header) >= 2:
-            rows = [row for row in split_lines[1:] if len(row) == len(header)]
-            if len(rows) >= max(3, len(split_lines) // 3):
-                columns = [col.strip() or f"column_{i+1}" for i, col in enumerate(header)]
-                return pd.DataFrame(rows, columns=columns)
+        data_rows = [row for row in split_lines[1:] if len(row) == len(header)]
+        if len(header) >= 2 and len(data_rows) >= max(2, len(split_lines) // 3):
+            header_tokens = [cell.strip() for cell in header]
+            non_numeric_header = sum(1 for cell in header_tokens if not re.fullmatch(r"[\d\W_]+", cell))
+            if non_numeric_header >= len(header) / 2:
+                columns = [col or f"column_{i+1}" for i, col in enumerate(header_tokens)]
+                return pd.DataFrame(data_rows, columns=columns)
 
     lengths = [len(row) for row in split_lines]
     most_common = Counter(lengths).most_common(1)
@@ -47,7 +49,7 @@ def parse_pdf_text_table(raw_text: str) -> pd.DataFrame:
             columns = [f"column_{i+1}" for i in range(expected)]
             return pd.DataFrame(rows, columns=columns)
 
-    return pd.DataFrame({"raw_text": lines})
+    return pd.DataFrame()
 
 
 def parse_table(file, file_type: str):

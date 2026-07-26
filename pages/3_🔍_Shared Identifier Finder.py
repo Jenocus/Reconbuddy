@@ -21,11 +21,13 @@ def combine_uploaded_sources(uploaded_files, source_label):
     dataframes = []
     fields = []
     raw_text_parts = []
+    file_types = []
     file_names = []
     file_rows = []
 
     for uploaded_file in uploaded_files:
         source = load_source(uploaded_file)
+        file_types.append(source.get("type"))
         if source.get("dataframe") is None:
             return {
                 "name": source_label,
@@ -36,6 +38,8 @@ def combine_uploaded_sources(uploaded_files, source_label):
                 "dataframe": None,
                 "files": file_names,
                 "file_rows": file_rows,
+                "file_types": file_types,
+                "has_pdf": any(t == "PDF" for t in file_types),
             }
 
         df = source["dataframe"]
@@ -53,15 +57,18 @@ def combine_uploaded_sources(uploaded_files, source_label):
             seen.add(field["name"])
             combined_fields.append(field)
 
+    combined_type = file_types[0] if len(set(file_types)) == 1 else "Combined"
     return {
         "name": source_label,
-        "type": "Combined",
+        "type": combined_type,
         "fields": combined_fields,
         "sample_rows": combined_df.head(5).astype(str).to_dict(orient="records"),
         "raw_text": "\n\n".join(raw_text_parts),
         "dataframe": combined_df,
         "files": file_names,
         "file_rows": file_rows,
+        "file_types": file_types,
+        "has_pdf": any(t == "PDF" for t in file_types),
     }
 
 # Page configuration
@@ -113,30 +120,42 @@ if uploaded_a and uploaded_b:
             with col1:
                 st.write(f"**{source_a['name']}**")
                 st.write(f"Type: {source_a['type']}")
-                if source_a["fields"]:
+                if source_a["fields"] and not (source_a.get("dataframe") is not None and not source_a["dataframe"].empty):
                     st.write("Fields:")
                     for field in source_a["fields"]:
                         st.write(f"- {field['name']}: {field['examples']}")
-                if source_a["type"] == "PDF":
+                if source_a.get("dataframe") is not None and not source_a["dataframe"].empty:
+                    st.write("Detected headers:")
+                    st.write(list(source_a["dataframe"].columns))
+                    st.write("Extracted table sample:")
+                    st.dataframe(format_dataframe_numbers(source_a["dataframe"].head(5)))
+                elif source_a.get("has_pdf"):
                     st.write("PDF text excerpt:")
                     st.write(source_a["raw_text"][:1000])
-                elif source_a.get("dataframe") is not None:
-                    st.write("Sample rows:")
-                    st.dataframe(format_dataframe_numbers(source_a["dataframe"].head(5)))
+                elif source_a.get("fields"):
+                    st.write("Fields:")
+                    for field in source_a["fields"]:
+                        st.write(f"- {field['name']}: {field['examples']}")
 
             with col2:
                 st.write(f"**{source_b['name']}**")
                 st.write(f"Type: {source_b['type']}")
-                if source_b["fields"]:
+                if source_b["fields"] and not (source_b.get("dataframe") is not None and not source_b["dataframe"].empty):
                     st.write("Fields:")
                     for field in source_b["fields"]:
                         st.write(f"- {field['name']}: {field['examples']}")
-                if source_b["type"] == "PDF":
+                if source_b.get("dataframe") is not None and not source_b["dataframe"].empty:
+                    st.write("Detected headers:")
+                    st.write(list(source_b["dataframe"].columns))
+                    st.write("Extracted table sample:")
+                    st.dataframe(format_dataframe_numbers(source_b["dataframe"].head(5)))
+                elif source_b.get("has_pdf"):
                     st.write("PDF text excerpt:")
                     st.write(source_b["raw_text"][:1000])
-                elif source_b.get("dataframe") is not None:
-                    st.write("Sample rows:")
-                    st.dataframe(format_dataframe_numbers(source_b["dataframe"].head(5)))
+                elif source_b.get("fields"):
+                    st.write("Fields:")
+                    for field in source_b["fields"]:
+                        st.write(f"- {field['name']}: {field['examples']}")
 
         if st.button("Shared Identifier Finder"):
             with st.spinner("Analyzing sources with LLM..."):

@@ -221,7 +221,47 @@ if uploaded_a and uploaded_b:
                     details["suggested_reason"] = details["identifier"].astype(str).map(suggestion_map).fillna("")
                     details_styled = format_dataframe_numbers(details)
 
+                    unmatched_total_a = unmatched["total_amount_a"].sum()
+                    unmatched_total_b = unmatched["total_amount_b"].sum()
+                    unmatched_difference = unmatched_total_a - unmatched_total_b
+                    matched_count = int(details[details["status"] == "Matched"].shape[0])
+                    unmatched_count = int(unmatched.shape[0])
+
+                    if totals["Total A"] != 0:
+                        pct_unmatched_a = unmatched_total_a / totals["Total A"] * 100
+                    else:
+                        pct_unmatched_a = 0.0
+                    if totals["Total B"] != 0:
+                        pct_unmatched_b = unmatched_total_b / totals["Total B"] * 100
+                    else:
+                        pct_unmatched_b = 0.0
+
+                    summary_lines = [
+                        f"**Executive Summary**",
+                        f"{unmatched_count:,} unmatched identifier(s) were found, representing {unmatched_total_a:,.2f} in Source A and {unmatched_total_b:,.2f} in Source B.",
+                        f"This is {pct_unmatched_a:.1f}% of Source A total and {pct_unmatched_b:.1f}% of Source B total.",
+                    ]
+
+                    if unmatched_count == 0:
+                        summary_lines.append("All reconciled identifiers matched within the tolerance.")
+                    else:
+                        if abs(unmatched_difference) > 0:
+                            diff_text = f"Source A is {'higher' if unmatched_difference > 0 else 'lower'} by {abs(unmatched_difference):,.2f} for unmatched amounts."
+                            summary_lines.append(diff_text)
+                        if pct_unmatched_a > pct_unmatched_b:
+                            summary_lines.append("Source A has a larger unmatched exposure proportionally.")
+                        elif pct_unmatched_b > pct_unmatched_a:
+                            summary_lines.append("Source B has a larger unmatched exposure proportionally.")
+                        else:
+                            summary_lines.append("Both sources have similar unmatched exposure proportions.")
+
                     reason_counts = unmatched["reason"].value_counts().rename_axis("reason").reset_index(name="count")
+                    top_reasons = reason_counts.head(3)["reason"].tolist()
+                    if top_reasons:
+                        summary_lines.append(f"Top unmatched reasons: {', '.join(top_reasons)}.")
+
+                    st.info("\n\n".join(summary_lines))
+
                     if not reason_counts.empty:
                         st.bar_chart(reason_counts.set_index("reason"))
 
@@ -230,10 +270,6 @@ if uploaded_a and uploaded_b:
                     unmatched_a_rows = source_a["dataframe"][source_a["dataframe"][selected["source_a_field"]].astype(str).isin(unmatched_ids_a)] if selected["source_a_field"] in source_a["dataframe"].columns else pd.DataFrame()
                     unmatched_b_rows = source_b["dataframe"][source_b["dataframe"][selected["source_b_field"]].astype(str).isin(unmatched_ids_b)] if selected["source_b_field"] in source_b["dataframe"].columns else pd.DataFrame()
 
-                    unmatched_total_a = unmatched["total_amount_a"].sum()
-                    unmatched_total_b = unmatched["total_amount_b"].sum()
-                    matched_count = int(details[details["status"] == "Matched"].shape[0])
-                    unmatched_count = int(unmatched.shape[0])
                     all_tab, matched_tab, unmatched_tab = st.tabs([
                         "All",
                         f"Matched ({matched_count})",

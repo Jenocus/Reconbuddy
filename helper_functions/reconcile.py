@@ -1,5 +1,6 @@
 import json
 from io import BytesIO
+from itertools import zip_longest
 
 import pandas as pd
 import streamlit as st
@@ -193,38 +194,139 @@ def group_amount_by_identifier(df, id_field, amount_field):
     return grouped
 
 
-def reconcile_by_identifier(source_a, source_b, identifier_choice, amount_field_a, amount_field_b):
+def reconcile_by_identifier(source_a, source_b, identifier_choice, amount_field_a, amount_field_b, tolerance=0.01):
     id_a = identifier_choice["source_a_field"]
     id_b = identifier_choice["source_b_field"]
 
     grouped_a = group_amount_by_identifier(source_a.get("dataframe"), id_a, amount_field_a)
     grouped_b = group_amount_by_identifier(source_b.get("dataframe"), id_b, amount_field_b)
-
-    if grouped_a.empty or grouped_b.empty:
-        return {
-            "grouped_a": grouped_a,
-            "grouped_b": grouped_b,
-            "joined": pd.DataFrame(),
-            "total_a": grouped_a["total_amount"].sum() if not grouped_a.empty else 0,
-            "total_b": grouped_b["total_amount"].sum() if not grouped_b.empty else 0,
-        }
-
-    joined = pd.merge(
-        grouped_a,
-        grouped_b,
-        on="identifier",
-        how="outer",
-        suffixes=("_a", "_b"),
+    details = reconcile_records(
+        source_a.get("dataframe"),
+        source_b.get("dataframe"),
+        id_a,
+        id_b,
+        amount_field_a,
+        amount_field_b,
     )
-    joined["total_amount_a"] = joined["total_amount_a"].fillna(0)
-    joined["total_amount_b"] = joined["total_amount_b"].fillna(0)
-    joined["difference"] = joined["total_amount_a"] - joined["total_amount_b"]
-    joined = joined.sort_values(by="difference", key=lambda col: col.abs(), ascending=False)
+    details = classify_reconciliation_rows(details, tolerance=tolerance)
 
     return {
         "grouped_a": grouped_a,
         "grouped_b": grouped_b,
-        "joined": joined,
+        "details": details,
         "total_a": grouped_a["total_amount"].sum(),
         "total_b": grouped_b["total_amount"].sum(),
     }
+
+
+def reconcile_records(df_a, df_b, key_a, key_b, amount_a, amount_b):
+    if df_a is None or df_b is None:
+        return pd.DataFrame(columns=["identifier", "amount_a", "amount_b", "left_present", "right_present"])
+
+    a = df_a[[key_a, amount_a]].copy()
+    b = df_b[[key_b, amount_b]].copy()
+    a.columns = ["identifier", "amount_a"]
+    b.columns = ["identifier", "amount_b"]
+    a["amount_a"] = pd.to_numeric(a["amount_a"], errors="coerce")
+    b["amount_b"] = pd.to_numeric(b["amount_b"], errors="coerce")
+
+    a = a.dropna(subset=["identifier"])
+    b = b.dropna(subset=["identifier"])
+
+    all_identifiers = sorted(set(a["identifier"].astype(str).unique()) | set(b["identifier"].astype(str).unique()))
+    rows = []
+    for identifier in all_identifiers:
+        rows_a = a[a["identifier"].astype(str) == str(identifier)].to_dict("records")
+        rows_b = b[b["identifier"].astype(str) == str(identifier)].to_dict("records")
+
+        for left, right in zip_longest(rows_a, rows_b):
+            rows.append({
+                "identifier": str(identifier),
+                "amount_a": left["amount_a"] if left is not None else None,
+                "amount_b": right["amount_b"] if right is not None else None,
+                "left_present": left is not None,
+                "right_present": right is not None,
+            })
+
+    if not rows:
+        return pd.DataFrame(columns=["identifier", "amount_a", "amount_b", "left_present", "right_present"])
+
+    return pd.DataFrame(rows)
+
+
+def merge_identifier_groups(grouped_a, grouped_b):
+    if grouped_a.empty and grouped_b.empty:
+        return pd.DataFrame(columns=["identifier", "total_amount_a", "total_amount_b", "difference"])
+
+    grouped_a = grouped_a.copy().reset_index(drop=True)
+    grouped_b = grouped_b.copy().reset_index(drop=True)
+    grouped_a["total_amount_a"] = grouped_a["total_amount"]
+    grouped_b["total_amount_b"] = grouped_b["total_amount"]
+    grouped_a = grouped_a[["identifier", "total_amount_a"]]
+    grouped_b = grouped_b[["identifier", "total_amount_b"]]
+
+    joined_rows = []
+    for row_a, row_b in zip_longest(grouped_a.to_dict("records"), grouped_b.to_dict("records")):
+        if row_a and row_b:
+            identifier = row_a["identifier"] if row_a["identifier"] == row_b["identifier"] else None
+        elif row_a:
+            identifier = row_a["identifier"]
+        else:
+            identifier = row_b["identifier"]
+
+        joined_rows.append({
+            "identifier": identifier,
+            "total_amount_a": row_a["total_amount_a"] if row_a else 0,
+            "total_amount_b": row_b["total_amount_b"] if row_b else 0,
+        })
+
+    joined = pd.DataFrame(joined_rows)
+    joined["difference"] = joined["total_amount_a"] - joined["total_amount_b"]
+    return joined
+
+
+def classify_reconciliation_rows(joined, tolerance=0.01):
+    rows = []
+    for _, row in joined.iterrows():
+        a = row["total_amount_a"]
+        b = row["total_amount_b"]
+        if pd.isna(a) and pd.isna(b):
+            status = "Missing on both sides"
+            reason = "No amounts available"
+        elif pd.isna(a) or a == 0:
+            status = "Unmatched"
+            reason = "Missing on source A"
+        elif pd.isna(b) or b == 0:
+            status = "Unmatched"
+            reason = "Missing on source B"
+        elif abs(a - b) <= tolerance:
+            status = "Matched"
+            reason = ""
+        else:
+            status = "Unmatched"
+            reason = "Mismatch"
+
+        rows.append({
+            "identifier": row["identifier"],
+            "total_amount_a": a,
+            "total_amount_b": b,
+            "difference": row["difference"],
+            "status": status,
+            "reason": reason,
+        })
+    return pd.DataFrame(rows)
+
+
+def build_output_files(recon_df, source_a, source_b):
+    excel_buffer = BytesIO()
+    with pd.ExcelWriter(excel_buffer, engine="openpyxl") as writer:
+        source_a["dataframe"].to_excel(writer, sheet_name="Source A", index=False)
+        source_b["dataframe"].to_excel(writer, sheet_name="Source B", index=False)
+        recon_df.to_excel(writer, sheet_name="Reconciliation", index=False)
+    excel_buffer.seek(0)
+
+    csv_buffer = BytesIO()
+    recon_df.to_csv(csv_buffer, index=False)
+    csv_buffer.seek(0)
+
+    return excel_buffer, csv_buffer

@@ -1,8 +1,8 @@
 import streamlit as st
 from helper_functions.reconcile import (
     analyze_sources,
+    build_output_files,
     detect_amount_fields,
-    group_amount_by_identifier,
     get_identifier_candidates,
     load_source,
     reconcile_by_identifier,
@@ -76,26 +76,70 @@ if uploaded_a and uploaded_b:
             col1, col2 = st.columns(2)
             with col1:
                 amount_a = st.selectbox("Amount field in first report", amount_fields_a)
+                tolerance = st.number_input(
+                    "Amount tolerance",
+                    min_value=0.0,
+                    max_value=1.0,
+                    value=0.01,
+                    step=0.01,
+                    format="%.4f",
+                )
             with col2:
                 amount_b = st.selectbox("Amount field in second report", amount_fields_b)
 
-            if st.button("Perform amount reconciliation"):
+            if st.button("Run Reconciliation"):
                 result = reconcile_by_identifier(
                     source_a,
                     source_b,
                     selected,
                     amount_a,
                     amount_b,
+                    tolerance=tolerance,
                 )
 
+                details = result["details"]
+                totals = {
+                    "Total A": result["total_a"],
+                    "Total B": result["total_b"],
+                    "Matched": int(details[details["status"] == "Matched"].shape[0]) if not details.empty else 0,
+                    "Unmatched": int(details[details["status"] == "Unmatched"].shape[0]) if not details.empty else 0,
+                }
+
                 st.subheader("Reconciliation Results")
-                st.write(f"Source A total: {result['total_a']}")
-                st.write(f"Source B total: {result['total_b']}")
-                if not result["joined"].empty:
-                    st.write("**Reconciliation by identifier**")
-                    st.dataframe(result["joined"].head(100))
+                metrics = st.columns(3)
+                metrics[0].metric("Source A total", totals["Total A"])
+                metrics[1].metric("Source B total", totals["Total B"])
+                metrics[2].metric("Matched rows", totals["Matched"])
+
+                if not details.empty:
+                    unmatched = details[details["status"] != "Matched"]
+                    reason_counts = unmatched["reason"].value_counts().rename_axis("reason").reset_index(name="count")
+                    if not reason_counts.empty:
+                        st.bar_chart(reason_counts.set_index("reason"))
+
+                    all_tab, matched_tab, unmatched_tab = st.tabs(["All", "Matched", "Unmatched"])
+                    with all_tab:
+                        st.dataframe(details)
+                    with matched_tab:
+                        st.dataframe(details[details["status"] == "Matched"])
+                    with unmatched_tab:
+                        st.dataframe(details[details["status"] != "Matched"])
+
+                    excel_data, csv_data = build_output_files(details, source_a, source_b)
+                    st.download_button(
+                        "Download reconciliation Excel",
+                        data=excel_data,
+                        file_name="reconciliation.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    )
+                    st.download_button(
+                        "Download reconciliation CSV",
+                        data=csv_data,
+                        file_name="reconciliation.csv",
+                        mime="text/csv",
+                    )
                 else:
-                    st.warning("No matching identifiers were found in both sources.")
+                    st.warning("No reconciliation rows were produced.")
         else:
             if "recon_candidates" in st.session_state:
                 st.error("No shared identifier candidates were found.")

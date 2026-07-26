@@ -141,8 +141,8 @@ if uploaded_a and uploaded_b:
                     if not reason_counts.empty:
                         st.bar_chart(reason_counts.set_index("reason"))
 
-                    unmatched_ids_a = unmatched[unmatched["left_present"]]["identifier"].astype(str).unique().tolist()
-                    unmatched_ids_b = unmatched[unmatched["right_present"]]["identifier"].astype(str).unique().tolist()
+                    unmatched_ids_a = unmatched[unmatched["total_amount_a"].notna()]["identifier"].astype(str).unique().tolist()
+                    unmatched_ids_b = unmatched[unmatched["total_amount_b"].notna()]["identifier"].astype(str).unique().tolist()
                     unmatched_a_rows = source_a["dataframe"][source_a["dataframe"][selected["source_a_field"]].astype(str).isin(unmatched_ids_a)] if selected["source_a_field"] in source_a["dataframe"].columns else pd.DataFrame()
                     unmatched_b_rows = source_b["dataframe"][source_b["dataframe"][selected["source_b_field"]].astype(str).isin(unmatched_ids_b)] if selected["source_b_field"] in source_b["dataframe"].columns else pd.DataFrame()
 

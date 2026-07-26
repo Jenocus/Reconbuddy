@@ -238,14 +238,6 @@ if uploaded_a and uploaded_b:
                 col1, col2 = st.columns(2)
                 with col1:
                     amount_a = st.selectbox("Select amount field in Source A", amount_fields_a, index=amount_fields_a.index(default_a))
-                    tolerance = st.number_input(
-                        "Amount tolerance",
-                        min_value=0.0,
-                        max_value=1.0,
-                        value=0.01,
-                        step=0.01,
-                        format="%.4f",
-                    )
                 with col2:
                     amount_b = st.selectbox("Select amount field in Source B", amount_fields_b, index=amount_fields_b.index(default_b))
 
@@ -272,7 +264,6 @@ if uploaded_a and uploaded_b:
                             selected,
                             amount_a,
                             amount_b,
-                            tolerance=tolerance,
                         )
 
                         details = result["details"]
@@ -362,7 +353,7 @@ if uploaded_a and uploaded_b:
                     ]
 
                     if unmatched_count == 0:
-                        summary_lines.append("All reconciled identifiers matched within the tolerance.")
+                        summary_lines.append("All reconciled identifiers matched.")
                     else:
                         if abs(unmatched_difference) > 0:
                             diff_text = f"Source A is {'higher' if unmatched_difference > 0 else 'lower'} by {abs(unmatched_difference):,.2f} for unmatched amounts."

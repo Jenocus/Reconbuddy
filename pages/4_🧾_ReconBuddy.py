@@ -66,11 +66,17 @@ if uploaded_a and uploaded_b:
             st.write(f"Type: {source_b['type']}")
             st.write(f"Fields: {[field['name'] for field in source_b['fields']]}" )
 
-        if st.button("Find identifier candidates"):
+        if (
+            "recon_candidates" not in st.session_state
+            or st.session_state.get("recon_a_name") != source_a["name"]
+            or st.session_state.get("recon_b_name") != source_b["name"]
+        ):
             with st.spinner("Finding shared identifier candidates..."):
                 analysis = analyze_sources(source_a, source_b, business_context)
                 st.session_state.recon_analysis = analysis
                 st.session_state.recon_candidates = get_identifier_candidates(analysis)
+                st.session_state.recon_a_name = source_a["name"]
+                st.session_state.recon_b_name = source_b["name"]
 
         candidates = st.session_state.get("recon_candidates", [])
 

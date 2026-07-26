@@ -193,6 +193,8 @@ if uploaded_a and uploaded_b:
                 options=valid_candidates,
                 format_func=lambda item: item["label"],
             )
+            if selected.get("score") is not None:
+                st.markdown(f"**Identifier pair match:** {selected['score']}%")
 
             analysis = st.session_state.get("recon_analysis", {})
             selected_mapping = next(
@@ -232,7 +234,7 @@ if uploaded_a and uploaded_b:
 
                 col1, col2 = st.columns(2)
                 with col1:
-                    amount_a = st.selectbox("Amount field in first report", amount_fields_a, index=amount_fields_a.index(default_a))
+                    amount_a = st.selectbox("Select amount field in first report", amount_fields_a, index=amount_fields_a.index(default_a))
                     tolerance = st.number_input(
                         "Amount tolerance",
                         min_value=0.0,
@@ -242,10 +244,10 @@ if uploaded_a and uploaded_b:
                         format="%.4f",
                     )
                 with col2:
-                    amount_b = st.selectbox("Amount field in second report", amount_fields_b, index=amount_fields_b.index(default_b))
+                    amount_b = st.selectbox("Select amount field in second report", amount_fields_b, index=amount_fields_b.index(default_b))
 
                 match_pct = amount_field_match_score(amount_a, amount_b, source_a["dataframe"], source_b["dataframe"])
-                st.markdown(f"**Amount field match:** {match_pct}%")
+                st.markdown(f"**Amount field pair match:** {match_pct}%")
 
                 if st.button("Run Reconciliation"):
                     missing_fields = []

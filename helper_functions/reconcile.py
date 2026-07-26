@@ -360,10 +360,20 @@ def detect_amount_fields(df):
     return df.columns.tolist()
 
 
+def _clean_numeric_series(series):
+    if series is None:
+        return pd.Series(dtype="float64")
+    cleaned = series.astype(str).str.strip()
+    cleaned = cleaned.str.replace(r"\(([^)]+)\)", r"-\1", regex=True)
+    cleaned = cleaned.str.replace(r"[^0-9\.\-\,]+", "", regex=True)
+    cleaned = cleaned.str.replace(",", "", regex=False)
+    return pd.to_numeric(cleaned, errors="coerce")
+
+
 def _infer_decimal_precision(series):
     if series is None:
         return None
-    values = pd.to_numeric(series, errors="coerce").dropna()
+    values = _clean_numeric_series(series).dropna()
     if values.empty:
         return None
     precisions = []
@@ -513,7 +523,7 @@ def group_amount_by_identifier(df, id_field, amount_field):
 
     grouped = df[[id_field, amount_field]].copy()
     grouped = grouped.dropna(subset=[id_field])
-    grouped[amount_field] = pd.to_numeric(grouped[amount_field], errors="coerce").fillna(0)
+    grouped[amount_field] = _clean_numeric_series(grouped[amount_field]).fillna(0)
     grouped = grouped.groupby(id_field, dropna=False)[amount_field].sum().reset_index()
     grouped = grouped.sort_values(by=amount_field, ascending=False)
     grouped.columns = ["identifier", "total_amount"]
@@ -560,8 +570,8 @@ def reconcile_records(df_a, df_b, key_a, key_b, amount_a, amount_b):
     b = df_b[[key_b, amount_b]].copy()
     a.columns = ["identifier", "amount_a"]
     b.columns = ["identifier", "amount_b"]
-    a["amount_a"] = pd.to_numeric(a["amount_a"], errors="coerce")
-    b["amount_b"] = pd.to_numeric(b["amount_b"], errors="coerce")
+    a["amount_a"] = _clean_numeric_series(a["amount_a"])
+    b["amount_b"] = _clean_numeric_series(b["amount_b"])
 
     a = a.dropna(subset=["identifier"]).astype({"identifier": str})
     b = b.dropna(subset=["identifier"]).astype({"identifier": str})

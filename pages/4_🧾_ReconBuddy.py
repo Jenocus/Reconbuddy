@@ -176,48 +176,80 @@ if uploaded_a and uploaded_b:
                 st.session_state.recon_b_name = source_b["name"]
 
         candidates = st.session_state.get("recon_candidates", [])
+        valid_candidates = [
+            c for c in candidates
+            if c["source_a_field"] in source_a["dataframe"].columns
+            and c["source_b_field"] in source_b["dataframe"].columns
+        ]
 
-        if candidates:
-            st.success(f"Found {len(candidates)} identifier candidate(s).")
+        if valid_candidates:
+            st.success(f"Found {len(valid_candidates)} identifier candidate(s).")
             selected = st.selectbox(
                 "Select identifier pair to reconcile",
-                options=candidates,
+                options=valid_candidates,
                 format_func=lambda item: item["label"],
             )
 
             amount_fields_a = list(source_a["dataframe"].columns)
             amount_fields_b = list(source_b["dataframe"].columns)
 
-            default_amount_a = detect_amount_fields(source_a["dataframe"])
-            default_amount_b = detect_amount_fields(source_b["dataframe"])
-            default_a = default_amount_a[0] if default_amount_a else amount_fields_a[0]
-            default_b = default_amount_b[0] if default_amount_b else amount_fields_b[0]
-
-            col1, col2 = st.columns(2)
-            with col1:
-                amount_a = st.selectbox("Amount field in first report", amount_fields_a, index=amount_fields_a.index(default_a))
-                tolerance = st.number_input(
-                    "Amount tolerance",
-                    min_value=0.0,
-                    max_value=1.0,
-                    value=0.01,
-                    step=0.01,
-                    format="%.4f",
+            if not amount_fields_a or not amount_fields_b:
+                st.error(
+                    "No amount columns were detected in one or both sources. "
+                    "Please verify the uploaded files and the extracted headers."
                 )
-            with col2:
-                amount_b = st.selectbox("Amount field in second report", amount_fields_b, index=amount_fields_b.index(default_b))
+            else:
+                default_amount_a = detect_amount_fields(source_a["dataframe"])
+                default_amount_b = detect_amount_fields(source_b["dataframe"])
+                default_a = default_amount_a[0] if default_amount_a else amount_fields_a[0]
+                default_b = default_amount_b[0] if default_amount_b else amount_fields_b[0]
 
-            if st.button("Run Reconciliation"):
-                result = reconcile_by_identifier(
-                    source_a,
-                    source_b,
-                    selected,
-                    amount_a,
-                    amount_b,
-                    tolerance=tolerance,
-                )
+                col1, col2 = st.columns(2)
+                with col1:
+                    amount_a = st.selectbox("Amount field in first report", amount_fields_a, index=amount_fields_a.index(default_a))
+                    tolerance = st.number_input(
+                        "Amount tolerance",
+                        min_value=0.0,
+                        max_value=1.0,
+                        value=0.01,
+                        step=0.01,
+                        format="%.4f",
+                    )
+                with col2:
+                    amount_b = st.selectbox("Amount field in second report", amount_fields_b, index=amount_fields_b.index(default_b))
 
-                details = result["details"]
+                if st.button("Run Reconciliation"):
+                    missing_fields = []
+                    for field_name, source_df, source_label in [
+                        (selected["source_a_field"], source_a["dataframe"], "Source A"),
+                        (selected["source_b_field"], source_b["dataframe"], "Source B"),
+                        (amount_a, source_a["dataframe"], "Source A"),
+                        (amount_b, source_b["dataframe"], "Source B"),
+                    ]:
+                        if field_name not in source_df.columns:
+                            missing_fields.append(f"{field_name} ({source_label})")
+
+                    if missing_fields:
+                        st.error(
+                            "Unable to reconcile because the selected identifier or amount field is not present in the parsed columns: "
+                            + ", ".join(missing_fields)
+                        )
+                    else:
+                        result = reconcile_by_identifier(
+                            source_a,
+                            source_b,
+                            selected,
+                            amount_a,
+                            amount_b,
+                            tolerance=tolerance,
+                        )
+
+                        details = result["details"]
+        else:
+            st.error(
+                "No valid shared identifier candidates were found in the parsed columns. "
+                "Please review the detected headers or upload different files."
+            )
                 totals = {
                     "Total A": result["total_a"],
                     "Total B": result["total_b"],

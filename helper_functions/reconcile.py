@@ -328,8 +328,10 @@ def normalize_score(value):
 def get_identifier_candidates(analysis):
     candidates = []
     for mapping in analysis.get("field_mappings", []):
-        source_a_field = mapping.get("source_a_field") or ""
-        source_b_field = mapping.get("source_b_field") or ""
+        source_a_field = (mapping.get("source_a_field") or "").strip()
+        source_b_field = (mapping.get("source_b_field") or "").strip()
+        if not source_a_field or not source_b_field:
+            continue
         score = normalize_score(mapping.get("match_score"))
         label = f"{source_a_field} ↔ {source_b_field}"
         if score is not None:
@@ -397,7 +399,14 @@ def reconcile_by_identifier(source_a, source_b, identifier_choice, amount_field_
 
 
 def reconcile_records(df_a, df_b, key_a, key_b, amount_a, amount_b):
-    if df_a is None or df_b is None:
+    if (
+        df_a is None
+        or df_b is None
+        or key_a not in df_a.columns
+        or amount_a not in df_a.columns
+        or key_b not in df_b.columns
+        or amount_b not in df_b.columns
+    ):
         return pd.DataFrame(columns=["identifier", "amount_a", "amount_b", "left_present", "right_present"])
 
     a = df_a[[key_a, amount_a]].copy()

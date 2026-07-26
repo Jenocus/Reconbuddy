@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 import hmac
 
@@ -7,9 +8,11 @@ def check_password():
 
     def password_entered():
         """Checks whether a password entered by the user is correct."""
-        secret_password = st.secrets.get("password")
+        secret_password = st.secrets.get("password") or os.getenv("PASSWORD")
         if secret_password is None:
-            st.error("App secret `password` is missing. Add it in Streamlit secrets.")
+            st.error(
+                "App secret `password` is missing. Add it in Streamlit secrets or set the environment variable `PASSWORD`."
+            )
             st.session_state["password_correct"] = False
             return
 

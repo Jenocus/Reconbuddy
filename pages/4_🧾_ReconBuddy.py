@@ -21,6 +21,56 @@ def format_dataframe_numbers(df):
     fmt = {col: "{:,.2f}" for col in numeric_cols}
     return df.style.format(fmt)
 
+
+def combine_uploaded_sources(uploaded_files, source_label):
+    if not uploaded_files:
+        return None
+
+    dataframes = []
+    fields = []
+    raw_text_parts = []
+
+    file_names = []
+    file_row_counts = []
+    for uploaded_file in uploaded_files:
+        source = load_source(uploaded_file)
+        if source.get("dataframe") is None:
+            return {
+                "name": source_label,
+                "type": "error",
+                "fields": [],
+                "sample_rows": [],
+                "raw_text": source.get("raw_text", ""),
+                "dataframe": None,
+                "files": file_names,
+                "file_rows": file_row_counts,
+            }
+        df = source["dataframe"]
+        file_names.append(uploaded_file.name)
+        file_row_counts.append(len(df))
+        dataframes.append(df)
+        fields.extend(source["fields"])
+        raw_text_parts.append(source.get("raw_text", ""))
+
+    combined_df = pd.concat(dataframes, ignore_index=True)
+    combined_fields = []
+    seen = set()
+    for field in fields:
+        if field["name"] not in seen:
+            seen.add(field["name"])
+            combined_fields.append(field)
+
+    return {
+        "name": source_label,
+        "type": "Combined",
+        "fields": combined_fields,
+        "sample_rows": combined_df.head(5).astype(str).to_dict(orient="records"),
+        "raw_text": "\n\n".join(raw_text_parts),
+        "dataframe": combined_df,
+        "files": file_names,
+        "file_rows": file_row_counts,
+    }
+
 # Page configuration
 st.set_page_config(
     layout="centered",
@@ -42,8 +92,8 @@ with st.expander("How it works"):
         "You can choose a different identifier candidate and compare totals for each source."
     )
 
-uploaded_a = st.file_uploader("Upload first report", type=["pdf", "csv", "xls", "xlsx"], key="recon_a")
-uploaded_b = st.file_uploader("Upload second report", type=["pdf", "csv", "xls", "xlsx"], key="recon_b")
+uploaded_a = st.file_uploader("Upload first source (1 or 2 files)", type=["pdf", "csv", "xls", "xlsx"], accept_multiple_files=True, key="recon_a")
+uploaded_b = st.file_uploader("Upload second source (1 or 2 files)", type=["pdf", "csv", "xls", "xlsx"], accept_multiple_files=True, key="recon_b")
 business_context = st.text_area(
     "Optional business context",
     value="Example: Reconcile amounts using the shared transaction or trace identifier.",
@@ -52,18 +102,32 @@ business_context = st.text_area(
 
 if uploaded_a and uploaded_b:
     with st.spinner("Parsing uploaded files..."):
-        source_a = load_source(uploaded_a)
-        source_b = load_source(uploaded_b)
+        source_a = combine_uploaded_sources(uploaded_a, "Source A")
+        source_b = combine_uploaded_sources(uploaded_b, "Source B")
 
     if source_a.get("dataframe") is None or source_b.get("dataframe") is None:
-        st.error("Amount reconciliation requires both files to be CSV or Excel.")
+        st.error("Amount reconciliation requires each source to be CSV or Excel files.")
     else:
         with st.expander("Source summaries", expanded=False):
             st.write(f"**{source_a['name']}**")
             st.write(f"Type: {source_a['type']}")
+            st.markdown(
+                f"<span title='This count includes all files uploaded into Source A.'>Combined rows: {len(source_a['dataframe']):,}</span>",
+                unsafe_allow_html=True,
+            )
+            if source_a.get("files"):
+                source_a_files = [f"{name} ({rows} rows)" for name, rows in zip(source_a['files'], source_a.get('file_rows', []))]
+                st.write(f"Combined from: {', '.join(source_a_files)}")
             st.write(f"Fields: {[field['name'] for field in source_a['fields']]}")
             st.write(f"**{source_b['name']}**")
             st.write(f"Type: {source_b['type']}")
+            st.markdown(
+                f"<span title='This count includes all files uploaded into Source B.'>Combined rows: {len(source_b['dataframe']):,}</span>",
+                unsafe_allow_html=True,
+            )
+            if source_b.get("files"):
+                source_b_files = [f"{name} ({rows} rows)" for name, rows in zip(source_b['files'], source_b.get('file_rows', []))]
+                st.write(f"Combined from: {', '.join(source_b_files)}")
             st.write(f"Fields: {[field['name'] for field in source_b['fields']]}" )
 
         if (
@@ -140,6 +204,10 @@ if uploaded_a and uploaded_b:
                     f"**Unmatched rows**<br><span style='color:red;font-size:24px'>{totals['Unmatched']:,}</span>",
                     unsafe_allow_html=True,
                 )
+
+                row_metrics = st.columns(2)
+                row_metrics[0].metric("Rows in Source A", f"{len(source_a['dataframe']):,}")
+                row_metrics[1].metric("Rows in Source B", f"{len(source_b['dataframe']):,}")
 
                 if not details.empty:
                     unmatched = details[details["status"] != "Matched"]

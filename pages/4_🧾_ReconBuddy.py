@@ -165,15 +165,17 @@ if uploaded_a and uploaded_b:
 
         if (
             "recon_candidates" not in st.session_state
-            or st.session_state.get("recon_a_name") != source_a["name"]
-            or st.session_state.get("recon_b_name") != source_b["name"]
+            or st.session_state.get("recon_a_files") != source_a.get("files")
+            or st.session_state.get("recon_b_files") != source_b.get("files")
+            or st.session_state.get("recon_business_context") != business_context
         ):
             with st.spinner("Finding shared identifier candidates..."):
                 analysis = analyze_sources(source_a, source_b, business_context)
                 st.session_state.recon_analysis = analysis
                 st.session_state.recon_candidates = get_identifier_candidates(analysis)
-                st.session_state.recon_a_name = source_a["name"]
-                st.session_state.recon_b_name = source_b["name"]
+                st.session_state.recon_a_files = source_a.get("files")
+                st.session_state.recon_b_files = source_b.get("files")
+                st.session_state.recon_business_context = business_context
 
         candidates = st.session_state.get("recon_candidates", [])
         valid_candidates = [

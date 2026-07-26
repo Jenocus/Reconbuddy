@@ -230,23 +230,24 @@ def reconcile_records(df_a, df_b, key_a, key_b, amount_a, amount_b):
     a["amount_a"] = pd.to_numeric(a["amount_a"], errors="coerce")
     b["amount_b"] = pd.to_numeric(b["amount_b"], errors="coerce")
 
-    a = a.dropna(subset=["identifier"])
-    b = b.dropna(subset=["identifier"])
+    a = a.dropna(subset=["identifier"]).astype({"identifier": str})
+    b = b.dropna(subset=["identifier"]).astype({"identifier": str})
 
-    all_identifiers = sorted(set(a["identifier"].astype(str).unique()) | set(b["identifier"].astype(str).unique()))
+    agg_a = a.groupby("identifier", dropna=False, sort=False)["amount_a"].sum().reset_index()
+    agg_b = b.groupby("identifier", dropna=False, sort=False)["amount_b"].sum().reset_index()
+
+    all_identifiers = sorted(set(agg_a["identifier"].unique()) | set(agg_b["identifier"].unique()))
     rows = []
     for identifier in all_identifiers:
-        rows_a = a[a["identifier"].astype(str) == str(identifier)].to_dict("records")
-        rows_b = b[b["identifier"].astype(str) == str(identifier)].to_dict("records")
-
-        for left, right in zip_longest(rows_a, rows_b):
-            rows.append({
-                "identifier": str(identifier),
-                "amount_a": left["amount_a"] if left is not None else None,
-                "amount_b": right["amount_b"] if right is not None else None,
-                "left_present": left is not None,
-                "right_present": right is not None,
-            })
+        row_a = agg_a[agg_a["identifier"] == identifier]
+        row_b = agg_b[agg_b["identifier"] == identifier]
+        rows.append({
+            "identifier": identifier,
+            "amount_a": float(row_a["amount_a"].iloc[0]) if not row_a.empty else None,
+            "amount_b": float(row_b["amount_b"].iloc[0]) if not row_b.empty else None,
+            "left_present": not row_a.empty,
+            "right_present": not row_b.empty,
+        })
 
     if not rows:
         return pd.DataFrame(columns=["identifier", "amount_a", "amount_b", "left_present", "right_present"])

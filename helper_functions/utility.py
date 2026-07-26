@@ -7,15 +7,7 @@ def check_password():
 
     def password_entered():
         """Checks whether a password entered by the user is correct."""
-        secret_password = st.secrets.get("password")
-        if secret_password is None:
-            st.error(
-                "App secret `password` is missing. Make sure `.streamlit/secrets.toml` exists in the app root or add the secret via Streamlit Cloud app settings."
-            )
-            st.session_state["password_correct"] = False
-            return
-
-        if hmac.compare_digest(st.session_state["password"], secret_password):
+        if hmac.compare_digest(st.session_state["password"], st.secrets["password"]):
             st.session_state["password_correct"] = True
             del st.session_state["password"]  # Don't store the password.
         else:

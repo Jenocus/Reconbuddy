@@ -5,6 +5,7 @@ from helper_functions.reconcile import (
     build_output_files,
     detect_amount_fields,
     get_identifier_candidates,
+    infer_unmatched_reasons,
     load_source,
     reconcile_by_identifier,
 )
@@ -135,8 +136,17 @@ if uploaded_a and uploaded_b:
                 )
 
                 if not details.empty:
-                    details_styled = format_dataframe_numbers(details)
                     unmatched = details[details["status"] != "Matched"]
+                    suggestion_map = infer_unmatched_reasons(
+                        unmatched,
+                        source_a["name"],
+                        source_b["name"],
+                        amount_a,
+                        amount_b,
+                    )
+                    details["suggested_reason"] = details["identifier"].astype(str).map(suggestion_map).fillna("")
+                    details_styled = format_dataframe_numbers(details)
+
                     reason_counts = unmatched["reason"].value_counts().rename_axis("reason").reset_index(name="count")
                     if not reason_counts.empty:
                         st.bar_chart(reason_counts.set_index("reason"))
@@ -146,8 +156,10 @@ if uploaded_a and uploaded_b:
                     unmatched_a_rows = source_a["dataframe"][source_a["dataframe"][selected["source_a_field"]].astype(str).isin(unmatched_ids_a)] if selected["source_a_field"] in source_a["dataframe"].columns else pd.DataFrame()
                     unmatched_b_rows = source_b["dataframe"][source_b["dataframe"][selected["source_b_field"]].astype(str).isin(unmatched_ids_b)] if selected["source_b_field"] in source_b["dataframe"].columns else pd.DataFrame()
 
+                    unmatched_total_a = unmatched["total_amount_a"].sum()
+                    unmatched_total_b = unmatched["total_amount_b"].sum()
                     matched_count = int(details[details["status"] == "Matched"].shape[0])
-                    unmatched_count = int(details[details["status"] != "Matched"].shape[0])
+                    unmatched_count = int(unmatched.shape[0])
                     all_tab, matched_tab, unmatched_tab = st.tabs([
                         "All",
                         f"Matched ({matched_count})",
@@ -159,10 +171,14 @@ if uploaded_a and uploaded_b:
                         st.dataframe(format_dataframe_numbers(details[details["status"] == "Matched"]))
                     with unmatched_tab:
                         st.markdown(f"### Unmatched rows ({unmatched_count})")
+                        st.markdown(
+                            f"**Unmatched total in Source A:** {unmatched_total_a:,.2f}  \
+                            **Unmatched total in Source B:** {unmatched_total_b:,.2f}"
+                        )
                         st.dataframe(format_dataframe_numbers(details[details["status"] != "Matched"]))
-                        st.markdown("**Unmatched rows from Source A**")
+                        st.markdown(f"**Unmatched rows from Source A (total {unmatched_total_a:,.2f})**")
                         st.dataframe(format_dataframe_numbers(unmatched_a_rows))
-                        st.markdown("**Unmatched rows from Source B**")
+                        st.markdown(f"**Unmatched rows from Source B (total {unmatched_total_b:,.2f})**")
                         st.dataframe(format_dataframe_numbers(unmatched_b_rows))
 
                     excel_data, csv_data = build_output_files(details, source_a, source_b)

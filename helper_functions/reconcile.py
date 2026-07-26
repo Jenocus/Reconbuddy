@@ -136,6 +136,69 @@ def analyze_sources(source_a, source_b, business_context: str = ""):
     return parse_reconciliation_response(result_text)
 
 
+def parse_json_response(response_text: str):
+    try:
+        return json.loads(response_text)
+    except json.JSONDecodeError:
+        start = response_text.find("{")
+        end = response_text.rfind("}")
+        if start != -1 and end != -1:
+            try:
+                return json.loads(response_text[start:end + 1])
+            except json.JSONDecodeError:
+                pass
+    return None
+
+
+def infer_unmatched_reasons(
+    unmatched_df,
+    source_a_name: str,
+    source_b_name: str,
+    amount_field_a: str,
+    amount_field_b: str,
+    max_rows: int = 20,
+):
+    if unmatched_df is None or unmatched_df.empty:
+        return {}
+
+    sample = unmatched_df.head(max_rows)[[
+        "identifier",
+        "total_amount_a",
+        "total_amount_b",
+        "status",
+        "reason",
+    ]].fillna("")
+
+    rows = sample.to_dict(orient="records")
+    prompt = (
+        "You are a financial reconciliation analyst. Review the following unmatched reconciliation rows from two sources. "
+        "For each row, infer a likely cause for why the amounts do not match. "
+        "Possible reasons include timing differences, partial settlement, missing invoice, duplicate posting, currency variation, fees, or data extraction mismatches. "
+        "Respond only with valid JSON in this format: [\n"
+        "  { \"identifier\": ..., \"suggested_reason\": ... },\n"
+        "]\n"
+        "Do not add any markdown or extra text."
+    )
+    prompt += "\n\n" + json.dumps(rows, indent=2)
+
+    response_text = get_completion([
+        {"role": "system", "content": "You are a concise and accurate reconciliation analyst."},
+        {"role": "user", "content": prompt},
+    ], temperature=0)
+
+    suggestions = parse_json_response(response_text)
+    if not isinstance(suggestions, list):
+        return {}
+
+    output = {}
+    for item in suggestions:
+        identifier = item.get("identifier")
+        reason = item.get("suggested_reason")
+        if identifier is not None and reason is not None:
+            output[str(identifier)] = str(reason)
+    return output
+
+
 def normalize_score(value):
     if value is None:
         return None

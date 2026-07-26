@@ -14,6 +14,7 @@ from helper_functions.reconcile import (
     load_source,
     reconcile_by_identifier,
     summarize_reconciliation_insights,
+    _infer_decimal_precision,
 )
 from helper_functions.utility import check_password
 
@@ -86,6 +87,30 @@ def combine_uploaded_sources(uploaded_files, source_label):
         normalized_frames.append(df.rename(columns=renamed_columns))
 
     combined_df = pd.concat(normalized_frames, ignore_index=True, sort=False)
+
+    # If a source has both a main amount column and a refund column, create a Net amount column.
+    if "net_amount" not in combined_df.columns:
+        amount_field_candidates = [
+            col for col in combined_df.columns
+            if any(token in normalize_column_name(col) for token in ["amount", "amt", "total", "value", "price", "cost", "charge"])
+            and not any(ref in normalize_column_name(col) for ref in ["refund", "refunded", "rebate", "chargeback", "return"])
+        ]
+        refund_field_candidates = [
+            col for col in combined_df.columns
+            if any(ref in normalize_column_name(col) for ref in ["refund", "refunded", "rebate", "chargeback", "return"])
+        ]
+        if amount_field_candidates and refund_field_candidates:
+            amount_col = max(amount_field_candidates, key=lambda col: _infer_decimal_precision(combined_df[col]) or 0)
+            refund_col = max(refund_field_candidates, key=lambda col: _infer_decimal_precision(combined_df[col]) or 0)
+            combined_df["net_amount"] = (
+                pd.to_numeric(combined_df[amount_col], errors="coerce").fillna(0)
+                - pd.to_numeric(combined_df[refund_col], errors="coerce").fillna(0)
+            )
+            if "net_amount" not in normalized_order:
+                normalized_order.append("net_amount")
+            if "net_amount" not in display_names:
+                display_names["net_amount"] = "Net amount"
+
     canonical_columns = [display_names[norm] for norm in normalized_order if norm in combined_df.columns]
     combined_df = combined_df.reindex(columns=canonical_columns)
 

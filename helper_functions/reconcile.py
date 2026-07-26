@@ -387,15 +387,22 @@ def choose_best_amount_field_by_precision(df, candidate_fields=None):
     if not fields:
         return None
 
-    non_customer_fields = [field for field in fields if "customer" not in field.lower()]
+    normalized = [field for field in fields if field in df.columns]
+    if not normalized:
+        return None
+
+    # Prefer explicit net fields first.
+    net_candidates = [field for field in normalized if "net" in field.lower()]
+    if net_candidates:
+        normalized = net_candidates
+
+    non_customer_fields = [field for field in normalized if "customer" not in field.lower()]
     if non_customer_fields:
-        fields = non_customer_fields
+        normalized = non_customer_fields
 
     best_field = None
     best_precision = -1
-    for field in fields:
-        if field not in df.columns:
-            continue
+    for field in normalized:
         precision = _infer_decimal_precision(df[field])
         if precision is None:
             precision = -1
@@ -403,13 +410,7 @@ def choose_best_amount_field_by_precision(df, candidate_fields=None):
             best_precision = precision
             best_field = field
 
-    if best_field and "customer" in best_field.lower() and len(fields) > 1:
-        other_fields = [f for f in fields if f != best_field]
-        secondary = choose_best_amount_field_by_precision(df, other_fields)
-        if secondary is not None:
-            return secondary
-
-    return best_field or fields[0]
+    return best_field or normalized[0]
 
 
 def choose_amount_field(source_a_df, source_b_df, amount_field_a):
@@ -419,6 +420,11 @@ def choose_amount_field(source_a_df, source_b_df, amount_field_a):
     non_customer_candidates = [field for field in candidates if "customer" not in field.lower()]
     if non_customer_candidates:
         candidates = non_customer_candidates
+
+    net_candidates = [field for field in candidates if "net" in field.lower()]
+    if net_candidates:
+        return choose_best_amount_field_by_precision(source_b_df, net_candidates)
+
     if amount_field_a not in source_a_df.columns:
         return choose_best_amount_field_by_precision(source_b_df, candidates)
 

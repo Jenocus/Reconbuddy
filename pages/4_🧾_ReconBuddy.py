@@ -191,6 +191,9 @@ if uploaded_a and uploaded_b:
                 if source_a.get('normalization_map'):
                     st.write("Header normalization map:")
                     st.write(source_a['normalization_map'])
+                if "Net amount" in source_a['dataframe'].columns:
+                    net_total_a = pd.to_numeric(source_a['dataframe']["Net amount"], errors="coerce").sum()
+                    st.write(f"Total Net amount: {net_total_a:,.2f}")
                 st.write("Extracted table sample:")
                 st.dataframe(format_dataframe_numbers(source_a['dataframe'].head(5)))
             elif source_a.get('has_pdf'):
@@ -213,13 +216,27 @@ if uploaded_a and uploaded_b:
                     if source_b.get('normalization_map'):
                         st.write("Header normalization map:")
                         st.write(source_b['normalization_map'])
+                    if "Net amount" in source_b['dataframe'].columns:
+                        net_total_b = pd.to_numeric(source_b['dataframe']["Net amount"], errors="coerce").sum()
+                        st.write(f"Total Net amount: {net_total_b:,.2f}")
                     st.write("Extracted table sample:")
                     st.dataframe(format_dataframe_numbers(source_b['dataframe'].head(5)))
                 else:
                     st.write("PDF text excerpt (table extraction failed):")
                     st.write(source_b['raw_text'][:1000])
             else:
-                st.write(f"Fields: {[field['name'] for field in source_b['fields']]}")
+                if source_b.get('dataframe') is not None and not source_b['dataframe'].empty:
+                    st.write(f"Detected headers: {list(source_b['dataframe'].columns)}")
+                    if source_b.get('normalization_map'):
+                        st.write("Header normalization map:")
+                        st.write(source_b['normalization_map'])
+                    if "Net amount" in source_b['dataframe'].columns:
+                        net_total_b = pd.to_numeric(source_b['dataframe']["Net amount"], errors="coerce").sum()
+                        st.write(f"Total Net amount: {net_total_b:,.2f}")
+                    st.write("Extracted table sample:")
+                    st.dataframe(format_dataframe_numbers(source_b['dataframe'].head(5)))
+                else:
+                    st.write(f"Fields: {[field['name'] for field in source_b['fields']]}")
 
         if (
             "recon_candidates" not in st.session_state
@@ -299,16 +316,23 @@ if uploaded_a and uploaded_b:
                 else:
                     default_b = choose_amount_field(source_a["dataframe"], source_b["dataframe"], default_a)
 
-                if default_b is None:
+                if default_a not in amount_fields_a:
+                    default_a = choose_best_amount_field_by_precision(source_a["dataframe"], default_amount_a)
+                if default_a not in amount_fields_a and amount_fields_a:
+                    default_a = amount_fields_a[0]
+
+                if default_b not in amount_fields_b:
                     default_b = choose_best_amount_field_by_precision(source_b["dataframe"], default_amount_b)
-                    if default_b is None:
-                        default_b = amount_fields_b[0]
+                if default_b not in amount_fields_b and amount_fields_b:
+                    default_b = amount_fields_b[0]
 
                 col1, col2 = st.columns(2)
                 with col1:
-                    amount_a = st.selectbox("Select amount field in Source A", amount_fields_a, index=amount_fields_a.index(default_a))
+                    amount_a_index = amount_fields_a.index(default_a) if default_a in amount_fields_a else 0
+                    amount_a = st.selectbox("Select amount field in Source A", amount_fields_a, index=amount_a_index)
                 with col2:
-                    amount_b = st.selectbox("Select amount field in Source B", amount_fields_b, index=amount_fields_b.index(default_b))
+                    amount_b_index = amount_fields_b.index(default_b) if default_b in amount_fields_b else 0
+                    amount_b = st.selectbox("Select amount field in Source B", amount_fields_b, index=amount_b_index)
 
                 if st.button("Run Reconciliation"):
                     missing_fields = []

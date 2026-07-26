@@ -253,27 +253,27 @@ if uploaded_a and uploaded_b:
                             "Unmatched": int(details[details["status"] == "Unmatched"].shape[0]) if not details.empty else 0,
                         }
 
-                st.subheader("Reconciliation Results")
-                metrics = st.columns(4)
-                metrics[0].metric("Source A total $", f"{totals['Total A']:,.2f}")
-                metrics[1].metric("Source B total $", f"{totals['Total B']:,.2f}")
-                metrics[2].markdown(
-                    f"**Matched identifiers**<br><span style='color:green;font-size:24px'>{totals['Matched']:,}</span>",
-                    unsafe_allow_html=True,
-                )
-                metrics[3].markdown(
-                    f"**Unmatched identifiers**<br><span style='color:red;font-size:24px'>{totals['Unmatched']:,}</span>",
-                    unsafe_allow_html=True,
-                )
+                        st.subheader("Reconciliation Results")
+                        metrics = st.columns(4)
+                        metrics[0].metric("Source A total $", f"{totals['Total A']:,.2f}")
+                        metrics[1].metric("Source B total $", f"{totals['Total B']:,.2f}")
+                        metrics[2].markdown(
+                            f"**Matched identifiers**<br><span style='color:green;font-size:24px'>{totals['Matched']:,}</span>",
+                            unsafe_allow_html=True,
+                        )
+                        metrics[3].markdown(
+                            f"**Unmatched identifiers**<br><span style='color:red;font-size:24px'>{totals['Unmatched']:,}</span>",
+                            unsafe_allow_html=True,
+                        )
 
-                if not details.empty:
-                    unmatched = details[details["status"] != "Matched"]
-                    matched = details[details["status"] == "Matched"]
-                    matched_amount_a = matched["total_amount_a"].sum()
-                    matched_amount_b = matched["total_amount_b"].sum()
+                        if not details.empty:
+                            unmatched = details[details["status"] != "Matched"]
+                            matched = details[details["status"] == "Matched"]
+                            matched_amount_a = matched["total_amount_a"].sum()
+                            matched_amount_b = matched["total_amount_b"].sum()
 
-                    unmatched_total_a = unmatched["total_amount_a"].sum()
-                    unmatched_total_b = unmatched["total_amount_b"].sum()
+                            unmatched_total_a = unmatched["total_amount_a"].sum()
+                            unmatched_total_b = unmatched["total_amount_b"].sum()
                     unmatched_count = int(unmatched.shape[0])
 
                     if len(source_a["dataframe"]):

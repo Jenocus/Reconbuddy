@@ -190,6 +190,26 @@ if uploaded_a and uploaded_b:
                 format_func=lambda item: item["label"],
             )
 
+            analysis = st.session_state.get("recon_analysis", {})
+            selected_mapping = next(
+                (
+                    m for m in analysis.get("field_mappings", [])
+                    if m.get("source_a_field") == selected["source_a_field"]
+                    and m.get("source_b_field") == selected["source_b_field"]
+                ),
+                None,
+            )
+            if selected_mapping:
+                st.markdown("**Detected shared identifier relationship:**")
+                st.write(
+                    f"`{selected_mapping['source_a_field']}` ↔ `{selected_mapping['source_b_field']}` — {selected_mapping.get('relationship', 'direct relationship')}"
+                )
+                if selected_mapping.get("explanation"):
+                    st.write(selected_mapping["explanation"])
+            st.caption(
+                "This reconciler supports embedded identifier matches, including cases where the Source B trace_id appears inside a longer Description field in Source A."
+            )
+
             amount_fields_a = list(source_a["dataframe"].columns)
             amount_fields_b = list(source_b["dataframe"].columns)
 

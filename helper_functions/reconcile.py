@@ -360,6 +360,61 @@ def detect_amount_fields(df):
     return df.columns.tolist()
 
 
+def _infer_decimal_precision(series):
+    if series is None:
+        return None
+    values = pd.to_numeric(series, errors="coerce").dropna()
+    if values.empty:
+        return None
+    precisions = []
+    for value in values.head(50):
+        text = format(value, "f")
+        if "." in text:
+            decimals = text.rstrip("0").split(".")[-1]
+            precisions.append(len(decimals))
+        else:
+            precisions.append(0)
+    if not precisions:
+        return None
+    precisions.sort()
+    return precisions[len(precisions) // 2]
+
+
+def choose_amount_field(source_a_df, source_b_df, amount_field_a):
+    candidates = detect_amount_fields(source_b_df)
+    if not candidates:
+        return None
+    if amount_field_a not in source_a_df.columns:
+        return candidates[0]
+
+    precision_a = _infer_decimal_precision(source_a_df[amount_field_a])
+    best_field = None
+    best_score = float("-inf")
+
+    for field in candidates:
+        precision_b = _infer_decimal_precision(source_b_df[field])
+        score = 0
+        if precision_a is not None and precision_b is not None:
+            score -= abs(precision_a - precision_b)
+        name = field.lower()
+        if "net" in name:
+            score += 3
+        if "settlement" in name:
+            score += 2
+        if "gross" in name:
+            score -= 1
+        if "customer" in name:
+            score -= 2
+        if any(token in name for token in ["amount", "amt", "total", "value", "price", "cost", "charge"]):
+            score += 1
+
+        if best_field is None or score > best_score:
+            best_field = field
+            best_score = score
+
+    return best_field or candidates[0]
+
+
 def group_amount_by_identifier(df, id_field, amount_field):
     if df is None or id_field not in df.columns or amount_field not in df.columns:
         return pd.DataFrame()

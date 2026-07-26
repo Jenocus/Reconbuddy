@@ -420,17 +420,17 @@ def choose_amount_field(source_a_df, source_b_df, amount_field_a):
         name = field.lower()
 
         if "net" in name and "customer" not in name:
-            score += 12
+            score += 10
         elif "net" in name:
-            score += 8
+            score += 6
         if "settlement" in name:
-            score += 8
+            score += 6
         if "invoice" in name:
-            score += 3
+            score += 2
         if "gross" in name:
             score -= 4
         if "customer" in name:
-            score -= 8
+            score -= 6
         if any(token in name for token in ["amount", "amt", "total", "value", "price", "cost", "charge"]):
             score += 2
         if field in numeric_b:
@@ -438,8 +438,13 @@ def choose_amount_field(source_a_df, source_b_df, amount_field_a):
         else:
             score -= 1
 
-        if precision_a is not None and precision_b is not None:
-            score -= abs(precision_a - precision_b)
+        if precision_b is not None:
+            score += precision_b * 4
+            if precision_a is not None:
+                if precision_b >= precision_a:
+                    score += 5
+                else:
+                    score -= (precision_a - precision_b) * 2
 
         if best_field is None or score > best_score or (
             score == best_score

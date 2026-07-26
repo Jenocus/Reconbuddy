@@ -5,21 +5,21 @@ from helper_functions.utility import check_password
 # Page configuration
 st.set_page_config(
     layout="centered",
-    page_title="Shared Identifier Search",
+    page_title="Shared Identifier Finder",
     page_icon="🔍",
 )
 
 if not check_password():
     st.stop()
 
-st.title("🔍 Shared Identifier Search")
+st.title("🔍 Shared Identifier Finder")
 st.write(
-    "Upload two reports in PDF, Excel, or CSV format and Shared Identifier Search will identify matching fields or shared identifiers across both sources."
+    "Upload two reports in PDF, Excel, or CSV format and Shared Identifier Finder will identify matching fields or shared identifiers across both sources."
 )
 
 with st.expander("How it works"):
     st.write(
-        "Shared  Identifier Search uses semantic analysis and an LLM to map fields across heterogeneous documents. "
+        "Shared  Identifier Finder uses semantic analysis and an LLM to map fields across heterogeneous documents. "
         "It does not rely on hard-coded field name matching, so it can detect a shared identifier even when it is embedded inside a description or other text field."
     )
 
@@ -60,7 +60,7 @@ if uploaded_a and uploaded_b:
                 st.write("PDF text excerpt:")
                 st.write(source_b["raw_text"][:1000])
 
-    if st.button("Shared Identifier Search"):
+    if st.button("Shared Identifier Finder"):
         with st.spinner("Analyzing sources with LLM..."):
             analysis = analyze_sources(source_a, source_b, business_context)
 

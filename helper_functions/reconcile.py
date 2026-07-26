@@ -387,6 +387,10 @@ def choose_best_amount_field_by_precision(df, candidate_fields=None):
     if not fields:
         return None
 
+    non_customer_fields = [field for field in fields if "customer" not in field.lower()]
+    if non_customer_fields:
+        fields = non_customer_fields
+
     best_field = None
     best_precision = -1
     for field in fields:
@@ -412,6 +416,9 @@ def choose_amount_field(source_a_df, source_b_df, amount_field_a):
     candidates = detect_amount_fields(source_b_df)
     if not candidates:
         return None
+    non_customer_candidates = [field for field in candidates if "customer" not in field.lower()]
+    if non_customer_candidates:
+        candidates = non_customer_candidates
     if amount_field_a not in source_a_df.columns:
         return choose_best_amount_field_by_precision(source_b_df, candidates)
 
@@ -422,8 +429,6 @@ def choose_amount_field(source_a_df, source_b_df, amount_field_a):
         precision_b = _infer_decimal_precision(source_b_df[field])
         name = field.lower()
         semantic_score = 0
-        if "customer" in name:
-            semantic_score -= 50
         if "net" in name and "customer" not in name:
             semantic_score += 10
         elif "net" in name:

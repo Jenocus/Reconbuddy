@@ -13,6 +13,57 @@ def format_dataframe_numbers(df):
     fmt = {col: "{:,.2f}" for col in numeric_cols}
     return df.style.format(fmt)
 
+
+def combine_uploaded_sources(uploaded_files, source_label):
+    if not uploaded_files:
+        return None
+
+    dataframes = []
+    fields = []
+    raw_text_parts = []
+    file_names = []
+    file_rows = []
+
+    for uploaded_file in uploaded_files:
+        source = load_source(uploaded_file)
+        if source.get("dataframe") is None:
+            return {
+                "name": source_label,
+                "type": "error",
+                "fields": [],
+                "sample_rows": [],
+                "raw_text": source.get("raw_text", ""),
+                "dataframe": None,
+                "files": file_names,
+                "file_rows": file_rows,
+            }
+
+        df = source["dataframe"]
+        file_names.append(uploaded_file.name)
+        file_rows.append(len(df))
+        dataframes.append(df)
+        fields.extend(source["fields"])
+        raw_text_parts.append(source.get("raw_text", ""))
+
+    combined_df = pd.concat(dataframes, ignore_index=True) if dataframes else pd.DataFrame()
+    combined_fields = []
+    seen = set()
+    for field in fields:
+        if field["name"] not in seen:
+            seen.add(field["name"])
+            combined_fields.append(field)
+
+    return {
+        "name": source_label,
+        "type": "Combined",
+        "fields": combined_fields,
+        "sample_rows": combined_df.head(5).astype(str).to_dict(orient="records"),
+        "raw_text": "\n\n".join(raw_text_parts),
+        "dataframe": combined_df,
+        "files": file_names,
+        "file_rows": file_rows,
+    }
+
 # Page configuration
 st.set_page_config(
     layout="centered",
@@ -34,8 +85,8 @@ with st.expander("How it works"):
         "It does not rely on hard-coded field name matching, so it can detect a shared identifier even when it is embedded inside a description or other text field."
     )
 
-uploaded_a = st.file_uploader("Upload first report", type=["pdf", "csv", "xls", "xlsx"], key="source_a")
-uploaded_b = st.file_uploader("Upload second report", type=["pdf", "csv", "xls", "xlsx"], key="source_b")
+uploaded_a = st.file_uploader("Upload first source (1 or 2 files)", type=["pdf", "csv", "xls", "xlsx"], accept_multiple_files=True, key="source_a")
+uploaded_b = st.file_uploader("Upload second source (1 or 2 files)", type=["pdf", "csv", "xls", "xlsx"], accept_multiple_files=True, key="source_b")
 business_context = st.text_area(
     "Optional business context",
     value="Example: Match transaction and audit records to reconcile trace IDs and descriptions.",
@@ -44,8 +95,8 @@ business_context = st.text_area(
 
 if uploaded_a and uploaded_b:
     with st.spinner("Parsing uploaded files..."):
-        source_a = load_source(uploaded_a)
-        source_b = load_source(uploaded_b)
+        source_a = combine_uploaded_sources(uploaded_a, "Source A")
+        source_b = combine_uploaded_sources(uploaded_b, "Source B")
 
     with st.expander("Source summaries", expanded=False):
         col1, col2 = st.columns(2)

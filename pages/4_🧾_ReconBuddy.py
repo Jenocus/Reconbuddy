@@ -72,24 +72,25 @@ def combine_uploaded_sources(uploaded_files, source_label):
 
     # Normalize column names across uploaded files so totals reflect all joined sources.
     normalized_frames = []
-    for df in dataframes:
-        renamed = {col: normalize_column_name(col) for col in df.columns}
-        normalized_frames.append(df.rename(columns=renamed))
-
-    combined_df = pd.concat(normalized_frames, ignore_index=True)
+    normalized_order = []
     display_names = {}
-    for field in fields:
-        normalized_name = normalize_column_name(field["name"])
-        if normalized_name not in display_names:
-            display_names[normalized_name] = field["name"]
+    for df in dataframes:
+        renamed_columns = {}
+        for col in df.columns:
+            normalized_name = normalize_column_name(col)
+            renamed_columns[col] = normalized_name
+            if normalized_name not in display_names:
+                display_names[normalized_name] = col
+            if normalized_name not in normalized_order:
+                normalized_order.append(normalized_name)
+        normalized_frames.append(df.rename(columns=renamed_columns))
 
-    combined_df = combined_df.rename(columns={norm: display_name for norm, display_name in display_names.items()})
-    combined_fields = []
-    seen = set()
-    for norm, display_name in display_names.items():
-        if norm not in seen:
-            seen.add(norm)
-            combined_fields.append({"name": display_name, "examples": []})
+    combined_df = pd.concat(normalized_frames, ignore_index=True, sort=False)
+    canonical_columns = [display_names[norm] for norm in normalized_order if norm in combined_df.columns]
+    combined_df = combined_df.reindex(columns=canonical_columns)
+
+    combined_fields = [{"name": display_names[norm], "examples": []} for norm in normalized_order if norm in combined_df.columns]
+    normalization_map = {display_names[norm]: norm for norm in normalized_order if norm in combined_df.columns}
 
     combined_type = file_types[0] if len(set(file_types)) == 1 else "Combined"
     return {
@@ -103,6 +104,7 @@ def combine_uploaded_sources(uploaded_files, source_label):
         "file_rows": file_row_counts,
         "file_types": file_types,
         "has_pdf": any(t == "PDF" for t in file_types),
+        "normalization_map": normalization_map,
     }
 
 # Page configuration
@@ -161,6 +163,9 @@ if uploaded_a and uploaded_b:
                 st.write(f"Combined from: {', '.join(source_a_files)}")
             if source_a.get('dataframe') is not None and not source_a['dataframe'].empty:
                 st.write(f"Detected headers: {list(source_a['dataframe'].columns)}")
+                if source_a.get('normalization_map'):
+                    st.write("Header normalization map:")
+                    st.write(source_a['normalization_map'])
                 st.write("Extracted table sample:")
                 st.dataframe(format_dataframe_numbers(source_a['dataframe'].head(5)))
             elif source_a.get('has_pdf'):
@@ -180,6 +185,9 @@ if uploaded_a and uploaded_b:
             if source_b['type'] == 'PDF':
                 if source_b.get('dataframe') is not None and not source_b['dataframe'].empty:
                     st.write(f"Detected headers: {list(source_b['dataframe'].columns)}")
+                    if source_b.get('normalization_map'):
+                        st.write("Header normalization map:")
+                        st.write(source_b['normalization_map'])
                     st.write("Extracted table sample:")
                     st.dataframe(format_dataframe_numbers(source_b['dataframe'].head(5)))
                 else:

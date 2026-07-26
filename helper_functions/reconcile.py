@@ -93,9 +93,10 @@ def build_reconciliation_prompt(source_a, source_b, business_context: str = "") 
         "You are a data reconciliation assistant. Given two sources with different formats, identify which fields or identifiers across both documents should be matched for reconciliation.",
         "Focus on semantic matching instead of exact field name equality. If a common identifier appears inside a longer text field such as a description, identify that relationship explicitly.",
         "Produce output in strict JSON with the keys: field_mappings, common_identifier, and reasoning.",
-        "field_mappings should be a list of objects with source_a_field, source_b_field, relationship, and explanation.",
+        "field_mappings should be a list of objects with source_a_field, source_b_field, relationship, explanation, and match_score.",
         "common_identifier should be the best shared unique identifier or reconciliation key across both sources.",
         "reasoning should explain why that key or match is likely the best reconciliation anchor.",
+        "match_score should be a percentage between 0 and 100 representing how well the fields align semantically.",
         "If a source has no column names, use the raw text clues to identify fields.",
     ]
     if business_context:

@@ -73,8 +73,10 @@ if uploaded_a and uploaded_b:
             if analysis.get("field_mappings"):
                 st.write("**Field mappings:**")
                 for mapping in analysis["field_mappings"]:
+                    score = mapping.get("match_score")
+                    score_text = f" (Match: {score}%)" if score is not None else ""
                     st.markdown(
-                        f"- `{mapping.get('source_a_field')}` ↔ `{mapping.get('source_b_field')}` — {mapping.get('relationship')}\n  \n"
+                        f"- `{mapping.get('source_a_field')}` ↔ `{mapping.get('source_b_field')}` — {mapping.get('relationship')}{score_text}\n  \n"
                         f"  Explanation: {mapping.get('explanation')}"
                     )
             if analysis.get("reasoning"):

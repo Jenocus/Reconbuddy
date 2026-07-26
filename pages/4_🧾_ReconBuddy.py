@@ -111,7 +111,10 @@ def combine_uploaded_sources(uploaded_files, source_label):
             if "net_amount" not in display_names:
                 display_names["net_amount"] = "Net amount"
 
-    canonical_columns = [display_names[norm] for norm in normalized_order if norm in combined_df.columns]
+    # Convert normalized column names back to the original display labels so downstream
+    # code works with the same field names that were shown in the source summary.
+    combined_df = combined_df.rename(columns=display_names)
+    canonical_columns = [display_names[norm] for norm in normalized_order if norm in display_names]
     combined_df = combined_df.reindex(columns=canonical_columns)
 
     combined_fields = [{"name": display_names[norm], "examples": []} for norm in normalized_order if norm in combined_df.columns]
@@ -253,10 +256,28 @@ if uploaded_a and uploaded_b:
                 st.session_state.recon_business_context = business_context
 
         candidates = st.session_state.get("recon_candidates", [])
+
+        def field_present_in_source(source, field_name):
+            # Check dataframe columns first
+            try:
+                if field_name in source.get("dataframe", pd.DataFrame()).columns:
+                    return True
+            except Exception:
+                pass
+            # Check fields metadata
+            for f in source.get("fields", []):
+                if str(f.get("name")) == str(field_name):
+                    return True
+            # Fallback: search the raw text for the field name
+            raw = source.get("raw_text", "") or ""
+            if raw and str(field_name).lower() in raw.lower():
+                return True
+            return False
+
         valid_candidates = [
             c for c in candidates
-            if c["source_a_field"] in source_a["dataframe"].columns
-            and c["source_b_field"] in source_b["dataframe"].columns
+            if field_present_in_source(source_a, c["source_a_field"]) 
+            and field_present_in_source(source_b, c["source_b_field"]) 
         ]
 
         if valid_candidates:

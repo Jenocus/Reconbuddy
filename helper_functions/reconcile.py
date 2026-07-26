@@ -26,7 +26,40 @@ def parse_pdf_text_table(raw_text: str) -> pd.DataFrame:
     lines = [line.strip() for line in raw_text.splitlines() if line.strip()]
     if not lines:
         return pd.DataFrame()
+    # Heuristics attempt: 1) pipe-separated, 2) comma-separated, 3) multi-space (fixed-width) columns
+    # 1) Pipe-separated table detection
+    pipe_counts = [line.count("|") for line in lines]
+    if any(c > 0 for c in pipe_counts):
+        # prefer when a majority of non-empty lines contain pipes
+        pipe_lines = [line for line in lines if "|" in line]
+        split_lines = [ [cell.strip() for cell in line.split("|") if cell is not None] for line in pipe_lines ]
+        lengths = [len(r) for r in split_lines]
+        if lengths and max(lengths) >= 2 and (sum(1 for l in lengths if l == lengths[0]) / len(lengths)) > 0.5:
+            header = split_lines[0]
+            data_rows = [row for row in split_lines[1:] if len(row) == len(header)]
+            if len(header) >= 2 and len(data_rows) >= 1:
+                header_tokens = [re.sub(r"[^\w ]+", "", cell).strip() or f"column_{i+1}" for i, cell in enumerate(header)]
+                return pd.DataFrame(data_rows, columns=header_tokens)
 
+    # 2) Comma-separated inside PDF text
+    comma_counts = [line.count(",") for line in lines]
+    if any(c > 0 for c in comma_counts):
+        # if many lines share the same comma count, assume CSV-like structure
+        most_common = Counter(comma_counts).most_common(1)
+        if most_common and most_common[0][0] > 0:
+            expected_commas = most_common[0][0]
+            csv_lines = [line for line in lines if line.count(",") == expected_commas]
+            if len(csv_lines) >= 3:
+                import csv
+                reader = csv.reader(csv_lines)
+                rows = [ [cell.strip() for cell in r] for r in reader ]
+                header = rows[0]
+                data_rows = [r for r in rows[1:] if len(r) == len(header)]
+                if len(header) >= 2 and len(data_rows) >= 1:
+                    header_tokens = [re.sub(r"[^\w ]+", "", cell).strip() or f"column_{i+1}" for i, cell in enumerate(header)]
+                    return pd.DataFrame(data_rows, columns=header_tokens)
+
+    # 3) Fallback: split on runs of 2+ spaces (fixed-width-like tables)
     splitter = re.compile(r"\s{2,}")
     split_lines = [splitter.split(line) for line in lines]
 
@@ -34,12 +67,13 @@ def parse_pdf_text_table(raw_text: str) -> pd.DataFrame:
         header = split_lines[0]
         data_rows = [row for row in split_lines[1:] if len(row) == len(header)]
         if len(header) >= 2 and len(data_rows) >= max(2, len(split_lines) // 3):
-            header_tokens = [cell.strip() for cell in header]
+            header_tokens = [re.sub(r"[^\w ]+", "", cell).strip() for cell in header]
             non_numeric_header = sum(1 for cell in header_tokens if not re.fullmatch(r"[\d\W_]+", cell))
             if non_numeric_header >= len(header) / 2:
                 columns = [col or f"column_{i+1}" for i, col in enumerate(header_tokens)]
                 return pd.DataFrame(data_rows, columns=columns)
 
+    # 4) Try to find any repeated row token lengths and use that as columns
     lengths = [len(row) for row in split_lines]
     most_common = Counter(lengths).most_common(1)
     if most_common and most_common[0][0] > 1 and most_common[0][1] >= 3:

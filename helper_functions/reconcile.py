@@ -407,57 +407,47 @@ def choose_amount_field(source_a_df, source_b_df, amount_field_a):
     if not candidates:
         return None
     if amount_field_a not in source_a_df.columns:
-        return candidates[0]
+        return choose_best_amount_field_by_precision(source_b_df, candidates)
 
     precision_a = _infer_decimal_precision(source_a_df[amount_field_a])
-    numeric_b = source_b_df.select_dtypes(include=["number"]).columns.tolist()
-    best_field = None
-    best_score = float("-inf")
+    scored_candidates = []
 
     for field in candidates:
         precision_b = _infer_decimal_precision(source_b_df[field])
-        score = 0
         name = field.lower()
-
+        semantic_score = 0
         if "net" in name and "customer" not in name:
-            score += 10
+            semantic_score += 10
         elif "net" in name:
-            score += 6
+            semantic_score += 6
         if "settlement" in name:
-            score += 6
+            semantic_score += 6
         if "invoice" in name:
-            score += 2
+            semantic_score += 2
         if "gross" in name:
-            score -= 4
+            semantic_score -= 4
         if "customer" in name:
-            score -= 6
+            semantic_score -= 6
         if any(token in name for token in ["amount", "amt", "total", "value", "price", "cost", "charge"]):
-            score += 2
-        if field in numeric_b:
-            score += 2
-        else:
-            score -= 1
+            semantic_score += 2
 
-        if precision_b is not None:
-            score += precision_b * 4
-            if precision_a is not None:
-                if precision_b >= precision_a:
-                    score += 5
-                else:
-                    score -= (precision_a - precision_b) * 2
+        precision_bonus = precision_b if precision_b is not None else -1
+        if precision_a is not None and precision_b is not None:
+            precision_bonus += 1 if precision_b >= precision_a else -1
 
-        if best_field is None or score > best_score or (
-            score == best_score
-            and precision_b is not None
-            and _infer_decimal_precision(source_b_df[best_field]) is not None
-            and precision_b > _infer_decimal_precision(source_b_df[best_field])
-        ):
-            best_field = field
-            best_score = score
+        scored_candidates.append((field, precision_bonus, semantic_score, precision_b or -1))
 
-    if best_score < 0 and any("net" in f.lower() for f in candidates):
-        return next((f for f in candidates if "net" in f.lower()), best_field)
-    return best_field or candidates[0]
+    if not scored_candidates:
+        return candidates[0]
+
+    max_precision = max(item[1] for item in scored_candidates)
+    best_precision_candidates = [item for item in scored_candidates if item[1] == max_precision]
+
+    if len(best_precision_candidates) == 1:
+        return best_precision_candidates[0][0]
+
+    best_candidate = max(best_precision_candidates, key=lambda item: (item[2], item[3], item[0]))
+    return best_candidate[0]
 
 
 def amount_field_match_score(field_a, field_b, source_a_df=None, source_b_df=None):

@@ -197,6 +197,9 @@ if uploaded_a and uploaded_b:
             if selected.get("score") is not None:
                 st.markdown(f"**Identifier pair match:** {selected['score']}%")
 
+            selected_key = f"{selected['source_a_field']}|{selected['source_b_field']}"
+            remembered_amounts = st.session_state.get("recon_last_amount_by_identifier", {}).get(selected_key, {})
+
             analysis = st.session_state.get("recon_analysis", {})
             selected_mapping = next(
                 (
@@ -228,8 +231,19 @@ if uploaded_a and uploaded_b:
             else:
                 default_amount_a = detect_amount_fields(source_a["dataframe"])
                 default_amount_b = detect_amount_fields(source_b["dataframe"])
-                default_a = choose_best_amount_field_by_precision(source_a["dataframe"], default_amount_a)
-                default_b = choose_amount_field(source_a["dataframe"], source_b["dataframe"], default_a)
+                default_a = None
+                default_b = None
+
+                if remembered_amounts.get("amount_a") in amount_fields_a:
+                    default_a = remembered_amounts["amount_a"]
+                else:
+                    default_a = choose_best_amount_field_by_precision(source_a["dataframe"], default_amount_a)
+
+                if remembered_amounts.get("amount_b") in amount_fields_b:
+                    default_b = remembered_amounts["amount_b"]
+                else:
+                    default_b = choose_amount_field(source_a["dataframe"], source_b["dataframe"], default_a)
+
                 if default_b is None:
                     default_b = choose_best_amount_field_by_precision(source_b["dataframe"], default_amount_b)
                     if default_b is None:
@@ -258,6 +272,10 @@ if uploaded_a and uploaded_b:
                             + ", ".join(missing_fields)
                         )
                     else:
+                        st.session_state.setdefault("recon_last_amount_by_identifier", {})[selected_key] = {
+                            "amount_a": amount_a,
+                            "amount_b": amount_b,
+                        }
                         result = reconcile_by_identifier(
                             source_a,
                             source_b,

@@ -6,13 +6,13 @@ from helper_functions.utility import check_password
 st.set_page_config(
     layout="centered",
     page_title="Shared Identifier Search",
-    page_icon="🧾",
+    page_icon="🔍",
 )
 
 if not check_password():
     st.stop()
 
-st.title("🧾 Shared Identifier Search")
+st.title("🔍 Shared Identifier Search")
 st.write(
     "Upload two reports in PDF, Excel, or CSV format and Shared Identifier Search will identify matching fields or shared identifiers across both sources."
 )

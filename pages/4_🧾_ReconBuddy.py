@@ -4,6 +4,7 @@ import streamlit as st
 from helper_functions.reconcile import (
     analyze_sources,
     build_output_files,
+    choose_amount_field,
     detect_amount_fields,
     get_identifier_candidates,
     infer_unmatched_reasons,

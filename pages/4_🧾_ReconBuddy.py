@@ -107,8 +107,15 @@ if uploaded_a and uploaded_b:
         source_a = combine_uploaded_sources(uploaded_a, "Source A")
         source_b = combine_uploaded_sources(uploaded_b, "Source B")
 
-    if source_a.get("dataframe") is None or source_b.get("dataframe") is None:
-        st.error("Amount reconciliation requires each source to be CSV or Excel files.")
+    if source_a is None or source_b is None:
+        st.error("Unable to read one or both sources. Please upload valid PDF, Excel, or CSV files.")
+    elif source_a.get("type") == "error" or source_b.get("type") == "error":
+        error_details = []
+        if source_a.get("type") == "error":
+            error_details.append(f"Source A: {source_a.get('raw_text', 'Unreadable file')}.")
+        if source_b.get("type") == "error":
+            error_details.append(f"Source B: {source_b.get('raw_text', 'Unreadable file')}.")
+        st.error("Unable to read one or both sources. " + " ".join(error_details))
     else:
         with st.expander("Source summaries", expanded=False):
             st.write(f"**{source_a['name']}**")

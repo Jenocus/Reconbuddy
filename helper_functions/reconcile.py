@@ -1,4 +1,6 @@
 import json
+import re
+from collections import Counter
 from io import BytesIO
 from itertools import zip_longest
 
@@ -18,6 +20,34 @@ def parse_pdf(file) -> str:
         if page_text:
             text_pages.append(page_text)
     return "\n\n".join(text_pages)
+
+
+def parse_pdf_text_table(raw_text: str) -> pd.DataFrame:
+    lines = [line.strip() for line in raw_text.splitlines() if line.strip()]
+    if not lines:
+        return pd.DataFrame()
+
+    splitter = re.compile(r"\s{2,}")
+    split_lines = [splitter.split(line) for line in lines]
+
+    if len(split_lines) >= 2:
+        header = split_lines[0]
+        if len(header) >= 2:
+            rows = [row for row in split_lines[1:] if len(row) == len(header)]
+            if len(rows) >= max(3, len(split_lines) // 3):
+                columns = [col.strip() or f"column_{i+1}" for i, col in enumerate(header)]
+                return pd.DataFrame(rows, columns=columns)
+
+    lengths = [len(row) for row in split_lines]
+    most_common = Counter(lengths).most_common(1)
+    if most_common and most_common[0][0] > 1 and most_common[0][1] >= 3:
+        expected = most_common[0][0]
+        rows = [row for row in split_lines if len(row) == expected]
+        if len(rows) >= 3:
+            columns = [f"column_{i+1}" for i in range(expected)]
+            return pd.DataFrame(rows, columns=columns)
+
+    return pd.DataFrame({"raw_text": lines})
 
 
 def parse_table(file, file_type: str):
@@ -50,15 +80,17 @@ def load_source(uploaded_file):
             source["dataframe"] = df
         elif lower.endswith(".pdf"):
             source["type"] = "PDF"
-            source["raw_text"] = parse_pdf(uploaded_file)
-            return source
+            raw_text = parse_pdf(uploaded_file)
+            source["raw_text"] = raw_text
+            df = parse_pdf_text_table(raw_text)
+            source["dataframe"] = df
         else:
             source["type"] = "unknown"
             source["raw_text"] = uploaded_file.read().decode(errors="replace")
             return source
 
-        source["raw_text"] = df.head(20).to_csv(index=False)
-        source["sample_rows"] = df.head(5).astype(str).to_dict(orient="records")
+        source["raw_text"] = df.head(20).to_csv(index=False) if not df.empty else raw_text
+        source["sample_rows"] = df.head(5).astype(str).to_dict(orient="records") if not df.empty else []
         source["fields"] = []
         for col in df.columns:
             values = df[col].dropna().astype(str).unique()[:4].tolist()

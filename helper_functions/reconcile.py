@@ -431,21 +431,20 @@ def choose_amount_field(source_a_df, source_b_df, amount_field_a):
         if any(token in name for token in ["amount", "amt", "total", "value", "price", "cost", "charge"]):
             semantic_score += 2
 
-        precision_bonus = precision_b if precision_b is not None else -1
-        if precision_a is not None and precision_b is not None:
-            precision_bonus += 1 if precision_b >= precision_a else -1
-
-        scored_candidates.append((field, precision_bonus, semantic_score, precision_b or -1))
+        precision_score = precision_b if precision_b is not None else -1
+        scored_candidates.append((field, precision_score, semantic_score, precision_b or -1))
 
     if not scored_candidates:
         return candidates[0]
 
+    # Prefer the field with the highest decimal precision first.
     max_precision = max(item[1] for item in scored_candidates)
     best_precision_candidates = [item for item in scored_candidates if item[1] == max_precision]
 
     if len(best_precision_candidates) == 1:
         return best_precision_candidates[0][0]
 
+    # If there is a tie in precision, prefer a field that is semantically closer to Source A or to money fields.
     best_candidate = max(best_precision_candidates, key=lambda item: (item[2], item[3], item[0]))
     return best_candidate[0]
 

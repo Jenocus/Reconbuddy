@@ -1,3 +1,4 @@
+import altair as alt
 import pandas as pd
 import streamlit as st
 from helper_functions.reconcile import (
@@ -282,22 +283,35 @@ if uploaded_a and uploaded_b:
                     st.info("\n\n".join(summary_lines))
 
                     chart_cols = st.columns(2)
+                    reason_counts_chart = reason_counts.copy()
+                    reason_counts_chart.columns = ["Reason", "Count"]
                     exposure_data = pd.DataFrame(
                         {
-                            "Source": [source_a["name"], source_b["name"]],
-                            "Matched Amount": [matched_amount_a, matched_amount_b],
-                            "Unmatched Amount": [unmatched_total_a, unmatched_total_b],
+                            "Source": [source_a["name"], source_b["name"], source_a["name"], source_b["name"]],
+                            "Type": ["Matched", "Matched", "Unmatched", "Unmatched"],
+                            "Amount": [matched_amount_a, matched_amount_b, unmatched_total_a, unmatched_total_b],
                         }
-                    ).set_index("Source")
+                    )
 
                     if not reason_counts.empty:
                         chart_cols[0].subheader("Unmatched reason counts")
-                        chart_cols[0].bar_chart(reason_counts.set_index("reason"))
+                        reason_chart = alt.Chart(reason_counts_chart).mark_bar().encode(
+                            x=alt.X("Count:Q", title="Count"),
+                            y=alt.Y("Reason:N", sort="-x", title="Reason"),
+                            tooltip=["Reason", "Count"],
+                        )
+                        chart_cols[0].altair_chart(reason_chart, use_container_width=True)
                     else:
                         chart_cols[0].info("No unmatched reason counts available.")
 
                     chart_cols[1].subheader("Amount exposure by source")
-                    chart_cols[1].bar_chart(exposure_data)
+                    exposure_chart = alt.Chart(exposure_data).mark_bar().encode(
+                        x=alt.X("Amount:Q", title="Amount"),
+                        y=alt.Y("Source:N", sort="-x", title="Source"),
+                        color=alt.Color("Type:N", title="Type"),
+                        tooltip=["Source", "Type", "Amount"],
+                    ).properties(height=250)
+                    chart_cols[1].altair_chart(exposure_chart, use_container_width=True)
 
                     unmatched_ids_a = unmatched[unmatched["total_amount_a"].notna()]["identifier"].astype(str).unique().tolist()
                     unmatched_ids_b = unmatched[unmatched["total_amount_b"].notna()]["identifier"].astype(str).unique().tolist()

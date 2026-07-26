@@ -54,43 +54,48 @@ if uploaded_a and uploaded_b:
             st.write(f"Type: {source_b['type']}")
             st.write(f"Fields: {[field['name'] for field in source_b['fields']]}" )
 
-        if st.button("Run Reconciliation"):
+        if st.button("Find identifier candidates"):
             with st.spinner("Finding shared identifier candidates..."):
                 analysis = analyze_sources(source_a, source_b, business_context)
-                candidates = get_identifier_candidates(analysis)
+                st.session_state.recon_analysis = analysis
+                st.session_state.recon_candidates = get_identifier_candidates(analysis)
 
-            if not candidates:
-                st.error("No shared identifier candidates were found.")
-            else:
-                selected = st.selectbox(
-                    "Select identifier pair to reconcile",
-                    options=candidates,
-                    format_func=lambda item: item["label"],
+        candidates = st.session_state.get("recon_candidates", [])
+
+        if candidates:
+            st.success(f"Found {len(candidates)} identifier candidate(s).")
+            selected = st.selectbox(
+                "Select identifier pair to reconcile",
+                options=candidates,
+                format_func=lambda item: item["label"],
+            )
+
+            amount_fields_a = detect_amount_fields(source_a["dataframe"])
+            amount_fields_b = detect_amount_fields(source_b["dataframe"])
+
+            col1, col2 = st.columns(2)
+            with col1:
+                amount_a = st.selectbox("Amount field in first report", amount_fields_a)
+            with col2:
+                amount_b = st.selectbox("Amount field in second report", amount_fields_b)
+
+            if st.button("Perform amount reconciliation"):
+                result = reconcile_by_identifier(
+                    source_a,
+                    source_b,
+                    selected,
+                    amount_a,
+                    amount_b,
                 )
 
-                amount_fields_a = detect_amount_fields(source_a["dataframe"])
-                amount_fields_b = detect_amount_fields(source_b["dataframe"])
-
-                col1, col2 = st.columns(2)
-                with col1:
-                    amount_a = st.selectbox("Amount field in first report", amount_fields_a)
-                with col2:
-                    amount_b = st.selectbox("Amount field in second report", amount_fields_b)
-
-                if st.button("Perform amount reconciliation"):
-                    result = reconcile_by_identifier(
-                        source_a,
-                        source_b,
-                        selected,
-                        amount_a,
-                        amount_b,
-                    )
-
-                    st.subheader("Reconcilation Results")
-                    st.write(f"Source A total: {result['total_a']}")
-                    st.write(f"Source B total: {result['total_b']}")
-                    if not result["joined"].empty:
-                        st.write("**Reconciliation by identifier**")
-                        st.dataframe(result["joined"].head(100))
-                    else:
-                        st.warning("No matching identifiers were found in both sources.")
+                st.subheader("Reconciliation Results")
+                st.write(f"Source A total: {result['total_a']}")
+                st.write(f"Source B total: {result['total_b']}")
+                if not result["joined"].empty:
+                    st.write("**Reconciliation by identifier**")
+                    st.dataframe(result["joined"].head(100))
+                else:
+                    st.warning("No matching identifiers were found in both sources.")
+        else:
+            if "recon_candidates" in st.session_state:
+                st.error("No shared identifier candidates were found.")

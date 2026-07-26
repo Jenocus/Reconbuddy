@@ -63,15 +63,44 @@ def parse_pdf_text_table(raw_text: str) -> pd.DataFrame:
     splitter = re.compile(r"\s{2,}")
     split_lines = [splitter.split(line) for line in lines]
 
+    def _is_header_row(cells):
+        # header rows typically have more non-numeric tokens than numeric tokens
+        if not cells:
+            return False
+        non_numeric = 0
+        numeric = 0
+        for cell in cells:
+            token = re.sub(r"[^0-9\.-]+", "", cell or "").strip()
+            if token == "":
+                non_numeric += 1
+            else:
+                # treat as numeric if token parses as number
+                try:
+                    float(token)
+                    numeric += 1
+                except Exception:
+                    non_numeric += 1
+        return non_numeric >= max(1, numeric)
+
     if len(split_lines) >= 2:
-        header = split_lines[0]
-        data_rows = [row for row in split_lines[1:] if len(row) == len(header)]
+        # Choose the most likely header row among the first few rows
+        candidate_header_idx = None
+        for idx in range(min(5, len(split_lines))):
+            if _is_header_row(split_lines[idx]):
+                candidate_header_idx = idx
+                break
+        if candidate_header_idx is None:
+            # fallback: pick the row with the most non-numeric cells among the first 5
+            scores = [(i, sum(1 for c in row if not re.fullmatch(r"[\d\.,\-]+", (c or "").strip()))) for i, row in enumerate(split_lines[:5])]
+            scores.sort(key=lambda x: x[1], reverse=True)
+            candidate_header_idx = scores[0][0]
+
+        header = split_lines[candidate_header_idx]
+        data_rows = [row for i, row in enumerate(split_lines) if i > candidate_header_idx and len(row) == len(header)]
         if len(header) >= 2 and len(data_rows) >= max(2, len(split_lines) // 3):
             header_tokens = [re.sub(r"[^\w ]+", "", cell).strip() for cell in header]
-            non_numeric_header = sum(1 for cell in header_tokens if not re.fullmatch(r"[\d\W_]+", cell))
-            if non_numeric_header >= len(header) / 2:
-                columns = [col or f"column_{i+1}" for i, col in enumerate(header_tokens)]
-                return pd.DataFrame(data_rows, columns=columns)
+            columns = [col or f"column_{i+1}" for i, col in enumerate(header_tokens)]
+            return pd.DataFrame(data_rows, columns=columns)
 
     # 4) Try to find any repeated row token lengths and use that as columns
     lengths = [len(row) for row in split_lines]

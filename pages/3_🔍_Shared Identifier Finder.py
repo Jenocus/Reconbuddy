@@ -1,6 +1,17 @@
+import pandas as pd
 import streamlit as st
 from helper_functions.reconcile import analyze_sources, load_source
 from helper_functions.utility import check_password
+
+
+def format_dataframe_numbers(df):
+    if df is None or df.empty:
+        return df
+    numeric_cols = df.select_dtypes(include=["number"]).columns
+    if len(numeric_cols) == 0:
+        return df
+    fmt = {col: "{:,.2f}" for col in numeric_cols}
+    return df.style.format(fmt)
 
 # Page configuration
 st.set_page_config(
@@ -48,6 +59,9 @@ if uploaded_a and uploaded_b:
             if source_a["type"] == "PDF":
                 st.write("PDF text excerpt:")
                 st.write(source_a["raw_text"][:1000])
+            elif source_a.get("dataframe") is not None:
+                st.write("Sample rows:")
+                st.dataframe(format_dataframe_numbers(source_a["dataframe"].head(5)))
 
         with col2:
             st.write(f"**{source_b['name']}**")
@@ -59,6 +73,9 @@ if uploaded_a and uploaded_b:
             if source_b["type"] == "PDF":
                 st.write("PDF text excerpt:")
                 st.write(source_b["raw_text"][:1000])
+            elif source_b.get("dataframe") is not None:
+                st.write("Sample rows:")
+                st.dataframe(format_dataframe_numbers(source_b["dataframe"].head(5)))
 
     if st.button("Shared Identifier Finder"):
         with st.spinner("Analyzing sources with LLM..."):

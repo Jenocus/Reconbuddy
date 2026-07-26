@@ -1,3 +1,4 @@
+import pandas as pd
 import streamlit as st
 from helper_functions.reconcile import (
     analyze_sources,
@@ -8,6 +9,16 @@ from helper_functions.reconcile import (
     reconcile_by_identifier,
 )
 from helper_functions.utility import check_password
+
+
+def format_dataframe_numbers(df):
+    if df is None or df.empty:
+        return df
+    numeric_cols = df.select_dtypes(include=["number"]).columns
+    if len(numeric_cols) == 0:
+        return df
+    fmt = {col: "{:,.2f}" for col in numeric_cols}
+    return df.style.format(fmt)
 
 # Page configuration
 st.set_page_config(
@@ -111,24 +122,48 @@ if uploaded_a and uploaded_b:
                 }
 
                 st.subheader("Reconciliation Results")
-                metrics = st.columns(3)
-                metrics[0].metric("Source A total", totals["Total A"])
-                metrics[1].metric("Source B total", totals["Total B"])
-                metrics[2].metric("Matched rows", totals["Matched"])
+                metrics = st.columns(4)
+                metrics[0].metric("Source A total", f"{totals['Total A']:,.2f}")
+                metrics[1].metric("Source B total", f"{totals['Total B']:,.2f}")
+                metrics[2].markdown(
+                    f"**Matched rows**<br><span style='color:green;font-size:24px'>{totals['Matched']:,}</span>",
+                    unsafe_allow_html=True,
+                )
+                metrics[3].markdown(
+                    f"**Unmatched rows**<br><span style='color:red;font-size:24px'>{totals['Unmatched']:,}</span>",
+                    unsafe_allow_html=True,
+                )
 
                 if not details.empty:
+                    details_styled = format_dataframe_numbers(details)
                     unmatched = details[details["status"] != "Matched"]
                     reason_counts = unmatched["reason"].value_counts().rename_axis("reason").reset_index(name="count")
                     if not reason_counts.empty:
                         st.bar_chart(reason_counts.set_index("reason"))
 
-                    all_tab, matched_tab, unmatched_tab = st.tabs(["All", "Matched", "Unmatched"])
+                    unmatched_ids_a = unmatched[unmatched["left_present"]]["identifier"].astype(str).unique().tolist()
+                    unmatched_ids_b = unmatched[unmatched["right_present"]]["identifier"].astype(str).unique().tolist()
+                    unmatched_a_rows = source_a["dataframe"][source_a["dataframe"][selected["source_a_field"]].astype(str).isin(unmatched_ids_a)] if selected["source_a_field"] in source_a["dataframe"].columns else pd.DataFrame()
+                    unmatched_b_rows = source_b["dataframe"][source_b["dataframe"][selected["source_b_field"]].astype(str).isin(unmatched_ids_b)] if selected["source_b_field"] in source_b["dataframe"].columns else pd.DataFrame()
+
+                    matched_count = int(details[details["status"] == "Matched"].shape[0])
+                    unmatched_count = int(details[details["status"] != "Matched"].shape[0])
+                    all_tab, matched_tab, unmatched_tab = st.tabs([
+                        "All",
+                        f"Matched ({matched_count})",
+                        f"Unmatched ({unmatched_count})",
+                    ])
                     with all_tab:
-                        st.dataframe(details)
+                        st.dataframe(details_styled)
                     with matched_tab:
-                        st.dataframe(details[details["status"] == "Matched"])
+                        st.dataframe(format_dataframe_numbers(details[details["status"] == "Matched"]))
                     with unmatched_tab:
-                        st.dataframe(details[details["status"] != "Matched"])
+                        st.markdown(f"### Unmatched rows ({unmatched_count})")
+                        st.dataframe(format_dataframe_numbers(details[details["status"] != "Matched"]))
+                        st.markdown("**Unmatched rows from Source A**")
+                        st.dataframe(format_dataframe_numbers(unmatched_a_rows))
+                        st.markdown("**Unmatched rows from Source B**")
+                        st.dataframe(format_dataframe_numbers(unmatched_b_rows))
 
                     excel_data, csv_data = build_output_files(details, source_a, source_b)
                     st.download_button(

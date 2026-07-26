@@ -399,6 +399,12 @@ def choose_best_amount_field_by_precision(df, candidate_fields=None):
             best_precision = precision
             best_field = field
 
+    if best_field and "customer" in best_field.lower() and len(fields) > 1:
+        other_fields = [f for f in fields if f != best_field]
+        secondary = choose_best_amount_field_by_precision(df, other_fields)
+        if secondary is not None:
+            return secondary
+
     return best_field or fields[0]
 
 
@@ -416,6 +422,8 @@ def choose_amount_field(source_a_df, source_b_df, amount_field_a):
         precision_b = _infer_decimal_precision(source_b_df[field])
         name = field.lower()
         semantic_score = 0
+        if "customer" in name:
+            semantic_score -= 50
         if "net" in name and "customer" not in name:
             semantic_score += 10
         elif "net" in name:
@@ -426,8 +434,6 @@ def choose_amount_field(source_a_df, source_b_df, amount_field_a):
             semantic_score += 2
         if "gross" in name:
             semantic_score -= 4
-        if "customer" in name:
-            semantic_score -= 6
         if any(token in name for token in ["amount", "amt", "total", "value", "price", "cost", "charge"]):
             semantic_score += 2
 

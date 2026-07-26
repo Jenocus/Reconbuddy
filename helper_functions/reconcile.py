@@ -428,6 +428,47 @@ def choose_amount_field(source_a_df, source_b_df, amount_field_a):
     return best_field or candidates[0]
 
 
+def amount_field_match_score(field_a, field_b, source_a_df=None, source_b_df=None):
+    def normalize(name):
+        return re.sub(r"[^a-z0-9]+", " ", str(name).lower()).split()
+
+    tokens_a = set(normalize(field_a))
+    tokens_b = set(normalize(field_b))
+    score = 0
+
+    if field_a == field_b:
+        score += 40
+
+    common_tokens = tokens_a & tokens_b
+    if common_tokens:
+        score += min(30, 10 * len(common_tokens))
+
+    strong_terms = ["net", "gross", "total", "amount", "sale", "charge", "price", "cost", "invoice", "settlement", "customer", "value"]
+    for term in strong_terms:
+        if term in tokens_a and term in tokens_b:
+            score += 10
+
+    if ("net" in tokens_a and "gross" in tokens_b) or ("gross" in tokens_a and "net" in tokens_b):
+        score -= 25
+    if ("net" in tokens_a and "customer" in tokens_b) or ("customer" in tokens_a and "net" in tokens_b):
+        score -= 25
+
+    if source_a_df is not None and source_b_df is not None:
+        try:
+            precision_a = _infer_decimal_precision(source_a_df[field_a]) if field_a in source_a_df.columns else None
+            precision_b = _infer_decimal_precision(source_b_df[field_b]) if field_b in source_b_df.columns else None
+            if precision_a is not None and precision_b is not None:
+                score += max(0, 10 - abs(precision_a - precision_b) * 2)
+        except Exception:
+            pass
+
+    if score < 0:
+        score = 0
+    if score > 100:
+        score = 100
+    return int(score)
+
+
 def group_amount_by_identifier(df, id_field, amount_field):
     if df is None or id_field not in df.columns or amount_field not in df.columns:
         return pd.DataFrame()

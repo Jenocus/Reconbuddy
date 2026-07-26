@@ -3,6 +3,7 @@ import pandas as pd
 import streamlit as st
 from helper_functions.reconcile import (
     analyze_sources,
+    amount_field_match_score,
     build_output_files,
     choose_amount_field,
     detect_amount_fields,
@@ -242,6 +243,9 @@ if uploaded_a and uploaded_b:
                     )
                 with col2:
                     amount_b = st.selectbox("Amount field in second report", amount_fields_b, index=amount_fields_b.index(default_b))
+
+                match_pct = amount_field_match_score(amount_a, amount_b, source_a["dataframe"], source_b["dataframe"])
+                st.markdown(f"**Amount field match:** {match_pct}%")
 
                 if st.button("Run Reconciliation"):
                     missing_fields = []

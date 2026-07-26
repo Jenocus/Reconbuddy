@@ -67,7 +67,7 @@ if uploaded_a and uploaded_b:
         if not analysis:
             st.error("Unable to interpret the reconciliation result.")
         else:
-            st.subheader("ReconBuddy Findings")
+            st.subheader("Shared Identifier Findings")
             if analysis.get("common_identifier"):
                 st.markdown(f"**Common Identifier:** {analysis['common_identifier']}")
             if analysis.get("field_mappings"):

@@ -288,18 +288,24 @@ def merge_identifier_groups(grouped_a, grouped_b):
 def classify_reconciliation_rows(joined, tolerance=0.01):
     rows = []
     for _, row in joined.iterrows():
-        a = row["total_amount_a"]
-        b = row["total_amount_b"]
+        a = row.get("total_amount_a") if "total_amount_a" in row else row.get("amount_a")
+        b = row.get("total_amount_b") if "total_amount_b" in row else row.get("amount_b")
+        diff = None
+        try:
+            diff = a - b if a is not None and b is not None else None
+        except Exception:
+            diff = None
+
         if pd.isna(a) and pd.isna(b):
             status = "Missing on both sides"
             reason = "No amounts available"
-        elif pd.isna(a) or a == 0:
+        elif a is None or pd.isna(a) or a == 0:
             status = "Unmatched"
             reason = "Missing on source A"
-        elif pd.isna(b) or b == 0:
+        elif b is None or pd.isna(b) or b == 0:
             status = "Unmatched"
             reason = "Missing on source B"
-        elif abs(a - b) <= tolerance:
+        elif diff is not None and abs(diff) <= tolerance:
             status = "Matched"
             reason = ""
         else:
@@ -307,10 +313,10 @@ def classify_reconciliation_rows(joined, tolerance=0.01):
             reason = "Mismatch"
 
         rows.append({
-            "identifier": row["identifier"],
+            "identifier": row.get("identifier"),
             "total_amount_a": a,
             "total_amount_b": b,
-            "difference": row["difference"],
+            "difference": diff,
             "status": status,
             "reason": reason,
         })

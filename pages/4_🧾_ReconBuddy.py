@@ -194,23 +194,42 @@ if uploaded_a and uploaded_b:
 
                 st.subheader("Reconciliation Results")
                 metrics = st.columns(4)
-                metrics[0].metric("Source A total", f"{totals['Total A']:,.2f}")
-                metrics[1].metric("Source B total", f"{totals['Total B']:,.2f}")
+                metrics[0].metric("Source A total $", f"{totals['Total A']:,.2f}")
+                metrics[1].metric("Source B total $", f"{totals['Total B']:,.2f}")
                 metrics[2].markdown(
-                    f"**Matched rows**<br><span style='color:green;font-size:24px'>{totals['Matched']:,}</span>",
+                    f"**Matched identifiers**<br><span style='color:green;font-size:24px'>{totals['Matched']:,}</span>",
                     unsafe_allow_html=True,
                 )
                 metrics[3].markdown(
-                    f"**Unmatched rows**<br><span style='color:red;font-size:24px'>{totals['Unmatched']:,}</span>",
+                    f"**Unmatched identifiers**<br><span style='color:red;font-size:24px'>{totals['Unmatched']:,}</span>",
                     unsafe_allow_html=True,
                 )
 
-                row_metrics = st.columns(2)
-                row_metrics[0].metric("Rows in Source A", f"{len(source_a['dataframe']):,}")
-                row_metrics[1].metric("Rows in Source B", f"{len(source_b['dataframe']):,}")
-
                 if not details.empty:
                     unmatched = details[details["status"] != "Matched"]
+                    matched = details[details["status"] == "Matched"]
+                    matched_amount_a = matched["total_amount_a"].sum()
+                    matched_amount_b = matched["total_amount_b"].sum()
+                    if totals["Total A"] != 0:
+                        pct_matched_a = matched_amount_a / totals["Total A"] * 100
+                    else:
+                        pct_matched_a = 0.0
+                    if totals["Total B"] != 0:
+                        pct_matched_b = matched_amount_b / totals["Total B"] * 100
+                    else:
+                        pct_matched_b = 0.0
+                    row_metrics = st.columns(2)
+                    row_metrics[0].metric(
+                        "Rows in Source A",
+                        f"{len(source_a['dataframe']):,}",
+                        f"{pct_matched_a:.1f}% matched",
+                    )
+                    row_metrics[1].metric(
+                        "Rows in Source B",
+                        f"{len(source_b['dataframe']):,}",
+                        f"{pct_matched_b:.1f}% matched",
+                    )
+
                     suggestion_map = infer_unmatched_reasons(
                         unmatched,
                         source_a["name"],
@@ -262,8 +281,23 @@ if uploaded_a and uploaded_b:
 
                     st.info("\n\n".join(summary_lines))
 
+                    chart_cols = st.columns(2)
+                    exposure_data = pd.DataFrame(
+                        {
+                            "Source": [source_a["name"], source_b["name"]],
+                            "Matched Amount": [matched_amount_a, matched_amount_b],
+                            "Unmatched Amount": [unmatched_total_a, unmatched_total_b],
+                        }
+                    ).set_index("Source")
+
                     if not reason_counts.empty:
-                        st.bar_chart(reason_counts.set_index("reason"))
+                        chart_cols[0].subheader("Unmatched reason counts")
+                        chart_cols[0].bar_chart(reason_counts.set_index("reason"))
+                    else:
+                        chart_cols[0].info("No unmatched reason counts available.")
+
+                    chart_cols[1].subheader("Amount exposure by source")
+                    chart_cols[1].bar_chart(exposure_data)
 
                     unmatched_ids_a = unmatched[unmatched["total_amount_a"].notna()]["identifier"].astype(str).unique().tolist()
                     unmatched_ids_b = unmatched[unmatched["total_amount_b"].notna()]["identifier"].astype(str).unique().tolist()

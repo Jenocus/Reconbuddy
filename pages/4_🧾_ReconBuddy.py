@@ -245,17 +245,13 @@ if uploaded_a and uploaded_b:
                         )
 
                         details = result["details"]
-        else:
-            st.error(
-                "No valid shared identifier candidates were found in the parsed columns. "
-                "Please review the detected headers or upload different files."
-            )
-                totals = {
-                    "Total A": result["total_a"],
-                    "Total B": result["total_b"],
-                    "Matched": int(details[details["status"] == "Matched"].shape[0]) if not details.empty else 0,
-                    "Unmatched": int(details[details["status"] == "Unmatched"].shape[0]) if not details.empty else 0,
-                }
+
+                        totals = {
+                            "Total A": result["total_a"],
+                            "Total B": result["total_b"],
+                            "Matched": int(details[details["status"] == "Matched"].shape[0]) if not details.empty else 0,
+                            "Unmatched": int(details[details["status"] == "Unmatched"].shape[0]) if not details.empty else 0,
+                        }
 
                 st.subheader("Reconciliation Results")
                 metrics = st.columns(4)

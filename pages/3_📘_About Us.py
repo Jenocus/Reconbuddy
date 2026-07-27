@@ -36,6 +36,11 @@ st.write(
     "Reconbuddy can work with a variety of business documents, including PDF statements, Excel workbooks, and CSV exports. The app extracts tables or text from those files, normalizes headers where possible, and then applies AI-assisted reasoning to identify likely matching fields and reconciliation keys."
 )
 
+st.subheader("Intelligence approach")
+st.write(
+    "Reconbuddy uses semantic analysis and an LLM to map fields across heterogeneous documents. Instead of relying on hard-coded field-name matching, it can identify shared identifiers even when they appear inside descriptions or other free-text fields."
+)
+
 st.subheader("Core features")
 st.write("- 📄 Upload and parse multiple source files")
 st.write("- 🔍 Discover candidate shared identifiers across heterogeneous data")

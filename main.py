@@ -5,8 +5,8 @@ from helper_functions.utility import check_password
 
 st.set_page_config(
     layout="centered",
-    page_title="AI Chatbot",
-    page_icon="🤖",
+    page_title="ReconBuddy",
+    page_icon="🧾",
 )
 
 # Do not continue if check_password is not True.
@@ -15,10 +15,12 @@ if not check_password():
 
 # endregion <--------- Streamlit Page Configuration --------->
 
-st.title("🤖 AI Chatbot")
+st.title("� ReconBuddy")
 st.write("""
-Welcome to the AI Chatbot! Navigate using the **sidebar** to explore:
+Welcome to ReconBuddy! Navigate using the **sidebar** to explore:
 
-- 💬 **Chatbot** — Have a conversation with the AI assistant
-- ℹ️ **About** — Learn more about this app
+- ℹ️ **About Us** — Learn about the project scope, objectives, and tech stack
+- 🧭 **Methodology** — Understand the workflow behind shared-identifier discovery and reconciliation
+- 🔍 **Shared Identifier Finder** — Discover likely shared identifiers across two reports
+- 🧾 **ReconBuddy** — Reconcile amounts using a selected identifier pair and review unmatched rows
 """)

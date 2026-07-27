@@ -47,7 +47,7 @@ st.write("- 🔍 Discover candidate shared identifiers across heterogeneous data
 st.write("- 🧾 Reconcile amounts using a selected identifier pair")
 st.write("- 📊 Review matched and unmatched rows with reason summaries")
 st.write("- ⬇️ Download reconciliation results as Excel or CSV")
-st.write("- 💬 Ask questions and explore the application through the conversational interface")
+st.write("- 💬 Use AI-assisted reasoning to explore matching fields and reconciliation logic")
 
 st.subheader("Tech Stack")
 st.write("""

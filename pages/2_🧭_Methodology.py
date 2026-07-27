@@ -29,33 +29,14 @@ st.write(
     "The implementation uses Streamlit for the UI, pandas for table handling, and LLM-based reasoning to infer relationships when field names differ or are embedded in free text. The LLM is used to interpret the meaning of uploaded fields and descriptions, identify likely shared identifiers, and explain why those mappings are reasonable before reconciliation is performed."
 )
 
-st.subheader("Use case 1: Explain and explore")
+st.subheader("Use case 1: Shared identifier discovery")
 st.write(
-    "This workflow helps users understand the uploaded content and the matching logic behind the reconciliation suggestions. The LLM interprets the available context and explains likely relationships in plain language."
+    "This workflow starts with uploaded reports, extracts structured information, and uses the LLM to suggest shared identifiers and field mappings before any reconciliation is performed."
 )
 
-st.markdown(
-    """
-    <svg width="720" height="220" viewBox="0 0 720 220" xmlns="http://www.w3.org/2000/svg">
-      <rect x="20" y="70" width="140" height="60" rx="10" fill="#e8f1ff" stroke="#4c78a8"/>
-      <text x="90" y="105" text-anchor="middle" font-size="16" fill="#1f2937">User question</text>
-      <line x1="160" y1="100" x2="220" y2="100" stroke="#4c78a8" stroke-width="2"/>
-      <rect x="220" y="70" width="160" height="60" rx="10" fill="#fef3c7" stroke="#f59e0b"/>
-      <text x="300" y="105" text-anchor="middle" font-size="16" fill="#1f2937">Build context</text>
-      <line x1="380" y1="100" x2="440" y2="100" stroke="#4c78a8" stroke-width="2"/>
-      <rect x="440" y="70" width="160" height="60" rx="10" fill="#dcfce7" stroke="#16a34a"/>
-      <text x="520" y="105" text-anchor="middle" font-size="16" fill="#1f2937">LLM response</text>
-      <line x1="600" y1="100" x2="660" y2="100" stroke="#4c78a8" stroke-width="2"/>
-      <rect x="660" y="70" width="40" height="60" rx="10" fill="#f3f4f6" stroke="#6b7280"/>
-      <text x="680" y="105" text-anchor="middle" font-size="14" fill="#1f2937">Answer</text>
-    </svg>
-    """,
-    unsafe_allow_html=True,
-)
-
-st.subheader("Use case 2: Shared identifier and reconciliation")
+st.subheader("Use case 2: Reconciliation")
 st.write(
-    "This workflow starts with uploaded reports, extracts structured information, uses the LLM to suggest shared identifiers, and then reconciles amounts so unmatched items can be reviewed."
+    "This workflow uses the selected identifier pair to reconcile totals across the two sources, then presents matched and unmatched rows with summary insights."
 )
 
 st.markdown(

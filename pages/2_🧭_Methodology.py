@@ -12,16 +12,16 @@ if not check_password():
 
 st.title("🧭 Methodology")
 st.write(
-    "The application follows a practical, explainable workflow: ingest data, understand the structure, identify shared identifiers, reconcile values, and communicate findings clearly."
+    "The workflow is intentionally simple: ingest data, identify likely shared identifiers, reconcile values, and present the results clearly."
 )
 
 st.subheader("End-to-end data flow")
 st.markdown(
     "1. Upload one or more source files in PDF, Excel, or CSV format.\n"
-    "2. Parse the documents and extract tables or textual context.\n"
-    "3. Normalize column names and detect likely amount fields.\n"
-    "4. Use AI-assisted analysis to suggest shared identifiers and field mappings.\n"
-    "5. Reconcile totals, inspect unmatched rows, and generate a downloadable report."
+    "2. Parse the documents and extract tables or text.\n"
+    "3. Normalize headers and detect likely amount fields.\n"
+    "4. Use LLM-based analysis to suggest shared identifiers and field mappings.\n"
+    "5. Reconcile totals, inspect unmatched rows, and export a report."
 )
 
 st.subheader("Implementation detail")
@@ -29,9 +29,9 @@ st.write(
     "The implementation uses Streamlit for the UI, pandas for table handling, and LLM-based reasoning to infer relationships when field names differ or are embedded in free text. The LLM is used to interpret the meaning of uploaded fields and descriptions, identify likely shared identifiers, and explain why those mappings are reasonable before reconciliation is performed."
 )
 
-st.subheader("Use case 1: Chat with information")
+st.subheader("Use case 1: Explain and explore")
 st.write(
-    "This workflow lets a user ask questions about the uploaded content or the reconciliation context. The system gathers the conversation history, retrieves relevant context, and returns an answer in plain language."
+    "This workflow helps users understand the uploaded content and the matching logic behind the reconciliation suggestions. The LLM interprets the available context and explains likely relationships in plain language."
 )
 
 st.markdown(
@@ -53,9 +53,9 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.subheader("Use case 2: Intelligent search and reconciliation")
+st.subheader("Use case 2: Shared identifier and reconciliation")
 st.write(
-    "This workflow starts with uploaded reports, extracts structured information, highlights likely shared identifiers, and then reconciles amounts across the two sources so unmatched items can be reviewed."
+    "This workflow starts with uploaded reports, extracts structured information, uses the LLM to suggest shared identifiers, and then reconciles amounts so unmatched items can be reviewed."
 )
 
 st.markdown(

@@ -17,19 +17,19 @@ st.write(
 
 st.subheader("Project scope")
 st.write(
-    "The application brings together document ingestion, field discovery, shared-identifier analysis, and reconciliation workflows in a single Streamlit experience. It is intended for analysts who need to compare reports from different systems without manually building every mapping by hand."
+    "Reconbuddy combines document ingestion, shared-identifier discovery, and reconciliation in a single workflow for comparing reports from different systems."
 )
 
 st.subheader("Objectives")
 col1, col2 = st.columns(2)
 with col1:
-    st.write("- Reduce time spent on manual reconciliation")
-    st.write("- Surface likely shared identifiers across inconsistent files")
-    st.write("- Provide explainable reconciliation results instead of opaque outputs")
+    st.write("- Speed up reconciliation between mismatched reports")
+    st.write("- Identify likely shared identifiers across different formats")
+    st.write("- Highlight unmatched records and likely causes")
 with col2:
-    st.write("- Support both conversational exploration and structured analysis")
-    st.write("- Help users inspect unmatched records and their likely causes")
-    st.write("- Deliver downloadable evidence for audit and review workflows")
+    st.write("- Use AI to interpret meaning rather than rely on exact field names")
+    st.write("- Provide transparent reasoning behind matches and recommendations")
+    st.write("- Export results for review and audit workflows")
 
 st.subheader("Data sources")
 st.write(
@@ -47,7 +47,7 @@ st.write("- 🔍 Discover candidate shared identifiers across heterogeneous data
 st.write("- 🧾 Reconcile amounts using a selected identifier pair")
 st.write("- 📊 Review matched and unmatched rows with reason summaries")
 st.write("- ⬇️ Download reconciliation results as Excel or CSV")
-st.write("- 💬 Use AI-assisted reasoning to explore matching fields and reconciliation logic")
+st.write("- 🤖 Use LLM-based reasoning to interpret field meaning and support matches")
 
 st.subheader("Tech Stack")
 st.write("""

@@ -431,7 +431,7 @@ def choose_amount_field(source_a_df, source_b_df, amount_field_a):
         semantic_score = 0
         if "net" in name and "customer" not in name:
             semantic_score += 10
-        elif "net" in name:
+        elif "h" in name:
             semantic_score += 6
         if "settlement" in name:
             semantic_score += 6

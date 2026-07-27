@@ -55,7 +55,11 @@ st.write("""
 |---|---|
 | UI Framework | [Streamlit](https://streamlit.io/) |
 | Language Model | [OpenAI GPT-4o-mini](https://openai.com/) |
-| Token Backend | Python 3.10+ |
+| Backend | Python 3.10+ |
+| Data Processing | [pandas](https://pandas.pydata.org/) |
+| Document Parsing | [PyPDF2](https://pypdf.readthedocs.io/) |
+| Spreadsheet Support | [openpyxl](https://openpyxl.readthedocs.io/) |
+| Visualization | [Altair](https://altair-viz.github.io/) |
 """)
 
 st.subheader("Who this is for")

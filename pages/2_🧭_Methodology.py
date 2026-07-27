@@ -26,7 +26,7 @@ st.markdown(
 
 st.subheader("Implementation detail")
 st.write(
-    "The implementation uses Streamlit for the UI, pandas for table handling, and LLM-based reasoning to infer relationships when field names differ or are embedded in free text. Text extraction is performed from uploaded files and then transformed into structured data frames for downstream analysis."
+    "The implementation uses Streamlit for the UI, pandas for table handling, and LLM-based reasoning to infer relationships when field names differ or are embedded in free text. The LLM is used to interpret the meaning of uploaded fields and descriptions, identify likely shared identifiers, and explain why those mappings are reasonable before reconciliation is performed."
 )
 
 st.subheader("Use case 1: Chat with information")

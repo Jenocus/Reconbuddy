@@ -38,7 +38,7 @@ st.write(
 
 st.subheader("Intelligence approach")
 st.write(
-    "Reconbuddy uses semantic analysis and an LLM to map fields across heterogeneous documents. Instead of relying on hard-coded field-name matching, it can identify shared identifiers even when they appear inside descriptions or other free-text fields."
+    "Reconbuddy uses semantic analysis and an LLM to highlight the most likely shared identifiers across heterogeneous documents. Instead of relying on hard-coded field-name matching, the model can interpret meaning, connect related fields, and detect identifiers that appear inside descriptions or other free-text fields."
 )
 
 st.subheader("Core features")

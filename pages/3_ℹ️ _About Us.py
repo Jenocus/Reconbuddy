@@ -4,13 +4,13 @@ from helper_functions.utility import check_password
 st.set_page_config(
     layout="centered",
     page_title="About Us",
-    page_icon="📘",
+    page_icon="ℹ️",
 )
 
 if not check_password():
     st.stop()
 
-st.title("📘 About Us")
+st.title("ℹ️ About Us")
 st.write(
     "Reconbuddy is an AI-assisted reconciliation workspace designed to help teams compare financial and operational records with less manual effort and more transparency."
 )
@@ -48,6 +48,15 @@ st.write("- 🧾 Reconcile amounts using a selected identifier pair")
 st.write("- 📊 Review matched and unmatched rows with reason summaries")
 st.write("- ⬇️ Download reconciliation results as Excel or CSV")
 st.write("- 💬 Ask questions and explore the application through the conversational interface")
+
+st.subheader("Tech Stack")
+st.write("""
+| Component | Tool |
+|---|---|
+| UI Framework | [Streamlit](https://streamlit.io/) |
+| Language Model | [OpenAI GPT-4o-mini](https://openai.com/) |
+| Token Backend | Python 3.10+ |
+""")
 
 st.subheader("Who this is for")
 st.write(

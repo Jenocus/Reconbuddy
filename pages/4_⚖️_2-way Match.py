@@ -356,18 +356,17 @@ if uploaded_a and uploaded_b:
                     amount_b_index = amount_fields_b.index(default_b) if default_b in amount_fields_b else 0
                     amount_b = st.selectbox("Select amount field in Source B", amount_fields_b, index=amount_b_index)
 
-                # Compute a hash of KB state so cache is invalidated when KB changes
+                # Compute a hash of KB state so we can detect when KB changes
                 import hashlib, json as _json
                 _kb_snapshot = load_kb()
                 _current_kb_hash = hashlib.md5(
                     _json.dumps(_kb_snapshot, sort_keys=True).encode()
                 ).hexdigest()
 
-                # Invalidate cached result if KB has changed since last run
+                # Warn (but do NOT clear results) if KB has changed since last run
                 _cached = st.session_state.get(f"recon_result_{selected_key}")
                 if _cached and _cached.get("kb_hash") != _current_kb_hash:
-                    st.session_state.pop(f"recon_result_{selected_key}", None)
-                    st.info("Knowledge base has changed since the last run — results will refresh on next reconciliation.")
+                    st.warning("⚠️ The knowledge base has changed since the last run. Click **Run Reconciliation** again to apply the latest learned patterns and flags.")
 
                 if st.button("Run Reconciliation"):
                     missing_fields = []

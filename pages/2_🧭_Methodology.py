@@ -43,62 +43,49 @@ st.write(
     "The reconciliation workflow is a multi-phase process involving deterministic matching, LLM-assisted reason inference, user feedback loops, and knowledge base updates."
 )
 
-st.mermaid("""
-graph TD
-    A["📊 ANALYST: Select Identifier Pair<br/>(e.g., invoice_id)"]
-    B["🔧 SYSTEM: Aggregate & Reconcile<br/>(Group by ID, sum amounts)"]
-    C["⏰ SYSTEM: Pre-detect Timing Diffs<br/>(Code: check date ranges)"]
-    D["📚 AI/KB: Load Context<br/>(user reasons, flagged bans)"]
-    E["🔀 SYSTEM: Classify Rows<br/>(Matched / Unmatched)"]
-    F["🧠 SYSTEM: Infer Unmatched Reasons<br/>(LLM: timing priority #1)"]
-    G["🤖 AI/KB: Suggest Reasons<br/>(inject KB examples/bans)"]
-    H["📋 ANALYST: Review Tables<br/>(All / Matched / Unmatched tabs)"]
-    I["⭐ SYSTEM: Display with Reasons<br/>(frozen headers, sortable)"]
-    J["👍👎 ANALYST: Rate Inline<br/>(confirm or flag wrong)"]
-    K["💾 SYSTEM: Record Feedback<br/>(user_reasons / flagged_reasons)"]
-    L["🔄 AI/KB: Update KB<br/>(recalc hash, invalidate cache)"]
-    M["✅ ANALYST: Export Report<br/>(Excel / CSV)"]
-    N["📥 SYSTEM: Save & Download<br/>(details + reasons)"]
-    O["🔁 NEXT RECONCILIATION<br/>Uses Learned KB Patterns"]
-    
-    A --> B
-    B --> C
-    C --> D
-    C --> E
-    E --> F
-    F --> G
-    G --> F
-    E --> H
-    B --> I
-    H --> J
-    I --> J
-    J --> K
-    K --> L
-    L --> O
-    M --> N
-    N --> O
-    
-    style A fill:#dbeafe,stroke:#0ea5e9,stroke-width:2px
-    style B fill:#fef3c7,stroke:#f59e0b,stroke-width:2px
-    style C fill:#fce7f3,stroke:#db2777,stroke-width:2px
-    style D fill:#fef08a,stroke:#ca8a04,stroke-width:2px
-    style E fill:#e0e7ff,stroke:#6366f1,stroke-width:2px
-    style F fill:#fbf8f3,stroke:#f97316,stroke-width:2px
-    style G fill:#f5f3ff,stroke:#a78bfa,stroke-width:2px
-    style H fill:#dcfce7,stroke:#16a34a,stroke-width:2px
-    style I fill:#f0fdfa,stroke:#14b8a6,stroke-width:2px
-    style J fill:#fef3c7,stroke:#f59e0b,stroke-width:2px
-    style K fill:#dbeafe,stroke:#0ea5e9,stroke-width:2px
-    style L fill:#fef08a,stroke:#ca8a04,stroke-width:2px
-    style M fill:#dcfce7,stroke:#16a34a,stroke-width:2px
-    style N fill:#f0fdfa,stroke:#14b8a6,stroke-width:2px
-    style O fill:#f3e8ff,stroke:#c084fc,stroke-width:3px
+st.markdown("""
+### 10-Phase Reconciliation Workflow
+
+| Phase | Actor | Step | Details |
+|-------|-------|------|---------|
+| 1 | 📊 Analyst | Select Identifier Pair | Choose the common field to match (e.g., invoice_id, transaction_id) |
+| 2 | 🔧 System | Aggregate & Reconcile | Group records by identifier, sum amounts per source |
+| 3 | ⏰ System | Pre-detect Timing Diffs | Code-level check: compare transaction dates to matched period range |
+| 4 | 📚 AI/KB | Load KB Context | Retrieve user-confirmed reasons and flagged bans for this field pair |
+| 5 | 🔀 System | Classify Rows | Label each record: Matched (within tolerance) or Unmatched (difference exceeds tolerance) |
+| 6 | 🧠 System | Infer Reasons (LLM) | Send unmatched rows to LLM with KB context; timing difference is priority #1 |
+| 7 | 🤖 AI/KB | Suggest Reasons | LLM returns reason per row, injecting user examples and respecting flagged bans |
+| 8 | 📋 Analyst | Review Tables | View All / Matched / Unmatched tabs with frozen headers and sortable columns |
+| 9 | ⭐ System | Display Reasons | Show suggested reason alongside each unmatched row for analyst review |
+| 10 | 👍👎 Analyst | Rate Inline | Click 👍 to confirm reason (saves as positive example) or 👎 to flag as wrong (bans it) |
+| 11 | 💾 System | Record Feedback | Store rating: 👍 → user_reasons (KB positive examples); 👎 → flagged_reasons (hard bans) |
+| 12 | 🔄 AI/KB | Update KB | Recalculate KB hash (MD5 of flagged + user_reasons); invalidate LLM result cache |
+| 13 | ✅ Analyst | Export Report | Download reconciliation with all reasons, status, and differences (Excel / CSV) |
+| 14 | 🔁 LOOP | Next Reconciliation | Same field pair uses updated KB: previous user confirmations + banned reasons improve suggestions |
+
+### Knowledge Base Feedback Loop
+
+**Positive Feedback (👍 Confirm)**
+- Reason saved to `user_reasons` section of KB
+- Next time LLM analyzes same field pair, it receives this as a positive example in the prompt
+- Example: "Previous analysts marked these as 'settlement delay': TXN-001, TXN-003, TXN-007"
+
+**Negative Feedback (👎 Flag Wrong)**
+- Reason added to `flagged_reasons` section of KB with flag counter incremented
+- Next time LLM analyzes same field pair, it receives hard prohibition: "NEVER use: 'missing invoice', 'flagged_reason_1'..."
+- LLM treats flagged reasons same as timing differences—strictly forbidden
+
+**Cache Invalidation**
+- KB hash updated only when flagged_reasons or user_reasons change (not mismatch_reasons)
+- Cache invalidation triggers fresh LLM call on next interaction
+- Ensures learning is reflected immediately without stale cached responses
 """)
 
 st.caption(
-    "**Workflow**: Analyst selects an identifier, System aggregates and classifies rows, AI/KB loads context and suggests reasons (with timing priority). "
-    "Analyst rates each reason inline. Feedback updates KB for next reconciliation. Results exported and downloaded."
+    "**Key insight**: This workflow combines deterministic logic (timing detection, classification) with adaptive AI learning (KB feedback). "
+    "Each user confirmation trains the system for future reconciliations with the same field pair."
 )
+
 
 
 

@@ -139,14 +139,14 @@ def combine_uploaded_sources(uploaded_files, source_label):
 # Page configuration
 st.set_page_config(
     layout="centered",
-    page_title="ReconBuddy",
-    page_icon="🧾",
+    page_title="2-way Match",
+    page_icon="⚖️",
 )
 
 if not check_password():
     st.stop()
 
-st.title("🧾 ReconBuddy")
+st.title("⚖️ 2-way Match")
 st.write(
     "Upload two reports and use a shared identifier to reconcile amounts across both sources."
 )

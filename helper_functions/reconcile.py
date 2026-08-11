@@ -208,8 +208,6 @@ def infer_unmatched_reasons(
         "identifier",
         "total_amount_a",
         "total_amount_b",
-        "status",
-        "reason",
     ]].fillna("")
 
     rows = sample.to_dict(orient="records")

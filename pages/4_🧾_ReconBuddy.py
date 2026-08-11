@@ -16,6 +16,7 @@ from helper_functions.reconcile import (
     summarize_reconciliation_insights,
     _infer_decimal_precision,
 )
+from helper_functions.knowledge_base import record_confirmed_pairing, record_mismatch_reasons
 from helper_functions.utility import check_password
 
 
@@ -485,6 +486,11 @@ if uploaded_a and uploaded_b:
 
                     reason_counts = unmatched["reason"].value_counts().rename_axis("reason").reset_index(name="count")
                     top_reasons = reason_counts.head(3)["reason"].tolist()
+
+                    # Persist confirmed pairing and mismatch reasons to the knowledge base
+                    record_confirmed_pairing(selected["source_a_field"], selected["source_b_field"])
+                    if not reason_counts.empty:
+                        record_mismatch_reasons(dict(zip(reason_counts["reason"], reason_counts["count"])))
 
                     summary_text = summarize_reconciliation_insights(
                         source_a,

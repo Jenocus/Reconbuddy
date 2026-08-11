@@ -741,6 +741,67 @@ if uploaded_a and uploaded_b:
                         file_name="reconciliation.csv",
                         mime="text/csv",
                     )
+
+                    # LLM Chat about sources
+                    st.write("---")
+                    st.subheader("💬 Ask about the sources")
+                    
+                    # Initialize chat history for this reconciliation
+                    chat_key = f"chat_history_{selected_key}"
+                    if chat_key not in st.session_state:
+                        st.session_state[chat_key] = []
+                    
+                    # Display chat history
+                    chat_container = st.container()
+                    with chat_container:
+                        for message in st.session_state[chat_key]:
+                            with st.chat_message(message["role"]):
+                                st.markdown(message["content"])
+                    
+                    # Chat input
+                    user_question = st.chat_input("Ask a question about these sources...", key=f"chat_input_{selected_key}")
+                    
+                    if user_question:
+                        # Add user message to history
+                        st.session_state[chat_key].append({"role": "user", "content": user_question})
+                        
+                        # Build context about sources
+                        source_context = (
+                            f"Source A: {_rr['source_a_name']}\n"
+                            f"- Total rows: {_rr['source_a_len']:,}\n"
+                            f"- Total amount: {totals['Total A']:,.2f}\n"
+                            f"- Matched amount: {matched_amount_a:,.2f}\n"
+                            f"- Unmatched amount: {unmatched_total_a:,.2f}\n\n"
+                            f"Source B: {_rr['source_b_name']}\n"
+                            f"- Total rows: {_rr['source_b_len']:,}\n"
+                            f"- Total amount: {totals['Total B']:,.2f}\n"
+                            f"- Matched amount: {matched_amount_b:,.2f}\n"
+                            f"- Unmatched amount: {unmatched_total_b:,.2f}\n\n"
+                            f"Reconciliation Results:\n"
+                            f"- Matched identifiers: {matched_count:,}\n"
+                            f"- Unmatched identifiers: {unmatched_count:,}\n"
+                            f"- Identifier pair: {_rr['field_a']} ↔ {_rr['field_b']}\n"
+                        )
+                        
+                        if not reason_counts.empty:
+                            reason_summary = "\nTop unmatched reasons:\n" + "\n".join(
+                                [f"- {row['reason']}: {int(row['count'])}" for _, row in reason_counts.head(5).iterrows()]
+                            )
+                            source_context += reason_summary
+                        
+                        # Get LLM response
+                        from helper_functions.llm import get_completion
+                        
+                        response = get_completion([
+                            {"role": "system", "content": "You are a helpful financial reconciliation analyst. Answer questions about the two sources and reconciliation results based on the provided data."},
+                            {"role": "user", "content": f"Here is the reconciliation data:\n\n{source_context}\n\nUser question: {user_question}"},
+                        ], temperature=0)
+                        
+                        # Add assistant response to history
+                        st.session_state[chat_key].append({"role": "assistant", "content": response})
+                        
+                        # Rerun to display new messages
+                        st.rerun()
         else:
             if "recon_candidates" in st.session_state:
                 st.error("No shared identifier candidates were found.")

@@ -84,29 +84,17 @@ st.write(
 )
 
 st.subheader("Key design choices")
-st.table(
-    {
-        "Decision": [
-            "Direct LLM prompting instead of RAG",
-            "JSON knowledge base with positive and negative feedback",
-            "Inline 👍/👎 per row; no batch dialogs",
-            "Frozen-header, sortable tables (Streamlit dataframe)",
-            "Timing difference: code-detected first, then LLM as priority #1",
-            "Local knowledge base; no external data sharing",
-            "Comprehensive test suite (54 tests)",
-            "GPT-4o-mini for reconciliation and chatbox",
-            "Session-state caching with KB hash invalidation",
-        ],
-        "Reason": [
-            "Reconciliation inputs are small structured tables; retrieval overhead is unnecessary.",
-            "User feedback directly tunes LLM behavior: 👍 adds positive examples, 👎 creates hard bans. Simple, fast, transparent.",
-            "Per-row feedback is immediate and low-friction. Users rate reasons as they review them without extra form dialogs.",
-            "Frozen headers and sorting improve usability for large result sets; matches analyst expectations from Excel-like interfaces.",
-            "Date-based logic is deterministic and fast; ensures timing mismatches are never false-negatives. LLM is instructed to prioritize it for edge cases.",
-            "Sensitive data never leaves the workspace. knowledge_base.json stores only anonymized patterns (field pairs and reason labels), not transaction data.",
-            "Tests are like checkpoints that verify the app works correctly. We test that learning is saved, reasons are suggested properly, and timing differences are detected. If something breaks, tests catch it immediately.",
-            "Cost-effective and sufficient for structured data reasoning; supports JSON parsing and conditional logic required by reconciliation.",
-            "The app remembers what it learned so it doesn't think about the same pair twice. When learning changes (new flagged or confirmed reasons), it forgets the old memory and learns fresh—avoiding old mistakes.",
-        ],
-    }
-)
+st.markdown("""
+| What we chose | Why |
+|---|---|
+| **Ask AI directly** | The data is small enough to show the AI everything at once. No need to search for pieces. |
+| **Learn & remember** | When you say 👍 or 👎, the app remembers your choice. Next time, the AI uses what you taught it. |
+| **Rate each row** | Instead of big popup forms, you just click 👍 or 👎 right on the row. Fast and easy. |
+| **Nice tables** | Headers stay at the top so you can always see what each column means, even when scrolling. |
+| **Check dates first** | If a transaction is in a different month, that's why it doesn't match. Check dates before asking the AI. |
+| **Keep data safe** | All your secret data stays on your computer. We only save labels and patterns, not your numbers. |
+| **Test everything** | We have checkpoints that test if learning works, if AI suggestions are right, and if timing checks work. |
+| **Use GPT-4o-mini** | It's smart enough for what we need and costs just the right amount. |
+| **Remember and reset** | The app memorizes answers to avoid asking the same question twice. When you teach it something new, it forgets the old answer to learn fresh. |
+""")
+

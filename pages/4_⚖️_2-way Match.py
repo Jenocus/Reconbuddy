@@ -16,7 +16,7 @@ from helper_functions.reconcile import (
     summarize_reconciliation_insights,
     _infer_decimal_precision,
 )
-from helper_functions.knowledge_base import record_confirmed_pairing, record_mismatch_reasons, record_user_reasons, record_flagged_reason
+from helper_functions.knowledge_base import record_confirmed_pairing, record_mismatch_reasons, record_user_reasons, record_flagged_reason, load_kb
 from helper_functions.utility import check_password
 
 
@@ -356,6 +356,19 @@ if uploaded_a and uploaded_b:
                     amount_b_index = amount_fields_b.index(default_b) if default_b in amount_fields_b else 0
                     amount_b = st.selectbox("Select amount field in Source B", amount_fields_b, index=amount_b_index)
 
+                # Compute a hash of KB state so cache is invalidated when KB changes
+                import hashlib, json as _json
+                _kb_snapshot = load_kb()
+                _current_kb_hash = hashlib.md5(
+                    _json.dumps(_kb_snapshot, sort_keys=True).encode()
+                ).hexdigest()
+
+                # Invalidate cached result if KB has changed since last run
+                _cached = st.session_state.get(f"recon_result_{selected_key}")
+                if _cached and _cached.get("kb_hash") != _current_kb_hash:
+                    st.session_state.pop(f"recon_result_{selected_key}", None)
+                    st.info("Knowledge base has changed since the last run — results will refresh on next reconciliation.")
+
                 if st.button("Run Reconciliation"):
                     missing_fields = []
                     for field_name, source_df, source_label in [
@@ -477,6 +490,7 @@ if uploaded_a and uploaded_b:
                                 "source_b_name": source_b["name"],
                                 "field_a": selected["source_a_field"],
                                 "field_b": selected["source_b_field"],
+                                "kb_hash": _current_kb_hash,
                             }
                         else:
                             st.session_state.pop(f"recon_result_{selected_key}", None)

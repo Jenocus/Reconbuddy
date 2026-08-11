@@ -416,6 +416,7 @@ if uploaded_a and uploaded_b:
                                 identifier_field_b=selected["source_b_field"],
                                 source_a_df=source_a["dataframe"],
                                 source_b_df=source_b["dataframe"],
+                                matched_df=matched,
                             )
                             details["suggested_reason"] = details["identifier"].astype(str).map(suggestion_map).fillna("")
 

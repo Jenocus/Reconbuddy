@@ -561,16 +561,7 @@ if uploaded_a and uploaded_b:
                         }
                     )
 
-                    if not reason_counts.empty:
-                        st.subheader("Unmatched reason counts")
-                        reason_chart = alt.Chart(reason_counts_chart).mark_bar().encode(
-                            x=alt.X("Count:Q", title="Count"),
-                            y=alt.Y("Reason:N", sort="-x", title="Reason"),
-                            tooltip=["Reason", "Count"],
-                        ).properties(height=300)
-                        st.altair_chart(reason_chart, use_container_width=True)
-                    else:
-                        st.info("No unmatched reason counts available.")
+
 
                     st.write("---")
                     st.subheader("Amount exposure by source")
@@ -755,7 +746,7 @@ if uploaded_a and uploaded_b:
                             st.info("Select a row above to view corresponding Source B rows")
 
                     st.write("---")
-                    st.subheader("Executive Summary")
+                    st.subheader("Summary")
                     st.info(summary_text)
 
                     excel_data, csv_data = build_output_files(details, source_a, source_b)

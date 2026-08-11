@@ -664,13 +664,19 @@ if uploaded_a and uploaded_b:
                         ].copy()
                         unmatched_with_edits = apply_reason_edits(details[details["status"] != "Matched"], "suggested_reason")
                         unmatched_edit["Reason"] = unmatched_with_edits["suggested_reason"].values
-                        readonly_cols = [c for c in unmatched_edit.columns if c != "Reason"]
+                        unmatched_edit.insert(0, "Select", False)  # Add checkbox column at the beginning
+                        readonly_cols = [c for c in unmatched_edit.columns if c not in ["Reason", "Select"]]
                         edited_unmatched = st.data_editor(
                             unmatched_edit,
                             disabled=readonly_cols,
                             use_container_width=True,
                             key=f"unmatched_editor_{selected_key}",
                             column_config={
+                                "Select": st.column_config.CheckboxColumn(
+                                    "Select",
+                                    help="Check a row to highlight its corresponding rows in Source A/B",
+                                    width="small",
+                                ),
                                 "Reason": st.column_config.TextColumn(
                                     "Reason",
                                     help="LLM-suggested reason. Edit to correct it, then click Save to train the AI for future runs on this identifier pair.",
@@ -695,27 +701,27 @@ if uploaded_a and uploaded_b:
                             else:
                                 st.info("No reasons entered to save.")
                         
-                        # Row selection for highlighting
-                        available_identifiers = edited_unmatched["identifier"].astype(str).unique().tolist()
-                        selected_identifier = st.selectbox(
-                            "Select an identifier to highlight corresponding rows",
-                            options=["(All rows)"] + sorted(available_identifiers),
-                            key=f"unmatched_select_{selected_key}",
-                            index=0,
-                        )
+                        # Filter Source A/B rows based on selected checkboxes
+                        selected_identifiers = edited_unmatched[edited_unmatched["Select"]]["identifier"].astype(str).tolist()
                         
-                        # Filter and display Source A/B rows based on selection
-                        if selected_identifier != "(All rows)":
-                            filtered_a = unmatched_a_rows[unmatched_a_rows[selected["source_a_field"]].astype(str) == selected_identifier]
-                            filtered_b = unmatched_b_rows[unmatched_b_rows[selected["source_b_field"]].astype(str) == selected_identifier]
+                        if selected_identifiers:
+                            filtered_a = unmatched_a_rows[unmatched_a_rows[selected["source_a_field"]].astype(str).isin(selected_identifiers)]
+                            filtered_b = unmatched_b_rows[unmatched_b_rows[selected["source_b_field"]].astype(str).isin(selected_identifiers)]
                         else:
-                            filtered_a = unmatched_a_rows
-                            filtered_b = unmatched_b_rows
+                            filtered_a = pd.DataFrame()
+                            filtered_b = pd.DataFrame()
                         
-                        st.markdown(f"**Unmatched rows from Source A (total {unmatched_total_a:,.2f})**")
-                        st.dataframe(format_dataframe_numbers(filtered_a))
-                        st.markdown(f"**Unmatched rows from Source B (total {unmatched_total_b:,.2f})**")
-                        st.dataframe(format_dataframe_numbers(filtered_b))
+                        st.markdown(f"**Unmatched rows from Source A**")
+                        if not filtered_a.empty:
+                            st.dataframe(format_dataframe_numbers(filtered_a))
+                        else:
+                            st.info("Select a row above to view corresponding Source A rows")
+                        
+                        st.markdown(f"**Unmatched rows from Source B**")
+                        if not filtered_b.empty:
+                            st.dataframe(format_dataframe_numbers(filtered_b))
+                        else:
+                            st.info("Select a row above to view corresponding Source B rows")
 
                     st.write("---")
                     st.subheader("Executive Summary")

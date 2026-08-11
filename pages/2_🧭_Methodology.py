@@ -40,161 +40,66 @@ st.write(
 
 st.subheader("Use case 2: Reconciliation workflow")
 st.write(
-    "The reconciliation workflow is a multi-phase process involving deterministic matching, LLM-assisted reason inference, user feedback loops, and knowledge base updates. Below is the swimlane diagram showing interactions between the Analyst, System, and AI/KB components."
+    "The reconciliation workflow is a multi-phase process involving deterministic matching, LLM-assisted reason inference, user feedback loops, and knowledge base updates."
 )
 
-st.markdown(
-    """
-    <svg width="100%" height="auto" viewBox="0 0 1100 750" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
-          <polygon points="0 0, 10 3, 0 6" fill="#4c78a8"/>
-        </marker>
-        <marker id="arrowhead-purple" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
-          <polygon points="0 0, 10 3, 0 6" fill="#c026d3"/>
-        </marker>
-      </defs>
-      
-      <!-- Swimlane backgrounds -->
-      <rect x="0" y="50" width="250" height="700" fill="#f0f4f8" stroke="#999" stroke-width="1"/>
-      <rect x="250" y="50" width="400" height="700" fill="#f9fafb" stroke="#999" stroke-width="1"/>
-      <rect x="650" y="50" width="450" height="700" fill="#fffbf0" stroke="#999" stroke-width="1"/>
-      
-      <!-- Swimlane headers -->
-      <text x="125" y="35" text-anchor="middle" font-weight="bold" font-size="14" fill="#1f2937">ANALYST</text>
-      <text x="450" y="35" text-anchor="middle" font-weight="bold" font-size="14" fill="#1f2937">SYSTEM</text>
-      <text x="875" y="35" text-anchor="middle" font-weight="bold" font-size="14" fill="#1f2937">AI / KB</text>
-      
-      <!-- Swimlane dividers -->
-      <line x1="250" y1="50" x2="250" y2="750" stroke="#666" stroke-width="2"/>
-      <line x1="650" y1="50" x2="650" y2="750" stroke="#666" stroke-width="2"/>
-      
-      <!-- PHASE 1: Select Identifier (y=80) -->
-      <rect x="15" y="70" width="220" height="55" rx="5" fill="#dbeafe" stroke="#0ea5e9" stroke-width="2"/>
-      <text x="125" y="95" text-anchor="middle" font-size="12" font-weight="bold" fill="#1f2937">1. Select Identifier Pair</text>
-      <text x="125" y="112" text-anchor="middle" font-size="10" fill="#666">(e.g., invoice_id)</text>
-      
-      <line x="235" y1="97" x2="250" y2="97" stroke="#4c78a8" stroke-width="2" marker-end="url(#arrowhead)"/>
-      
-      <!-- PHASE 2: Aggregate (y=80) -->
-      <rect x="265" y="70" width="220" height="55" rx="5" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/>
-      <text x="375" y="95" text-anchor="middle" font-size="12" font-weight="bold" fill="#1f2937">2. Aggregate &amp; Reconcile</text>
-      <text x="375" y="112" text-anchor="middle" font-size="10" fill="#666">(Group by ID, sum amounts)</text>
-      
-      <line x="485" y1="97" x2="650" y2="97" stroke="#4c78a8" stroke-width="2" marker-end="url(#arrowhead)"/>
-      
-      <!-- PHASE 3: Pre-detect Timing (y=80) -->
-      <rect x="665" y="70" width="220" height="55" rx="5" fill="#fce7f3" stroke="#db2777" stroke-width="2"/>
-      <text x="775" y="95" text-anchor="middle" font-size="12" font-weight="bold" fill="#1f2937">3. Pre-detect Timing Diffs</text>
-      <text x="775" y="112" text-anchor="middle" font-size="10" fill="#666">(Code: check date ranges)</text>
-      
-      <!-- Feedback arrow to KB -->
-      <line x1="885" y1="95" x2="900" y2="95" stroke="#c026d3" stroke-width="2" stroke-dasharray="4" marker-end="url(#arrowhead-purple)"/>
-      <text x="885" y="88" font-size="9" fill="#c026d3">load</text>
-      
-      <!-- PHASE 3b: Load KB (y=80) -->
-      <rect x="915" y="70" width="170" height="55" rx="5" fill="#fef08a" stroke="#ca8a04" stroke-width="2"/>
-      <text x="1000" y="95" text-anchor="middle" font-size="11" font-weight="bold" fill="#1f2937">Load KB Context</text>
-      <text x="1000" y="112" text-anchor="middle" font-size="9" fill="#666">(user reasons, bans)</text>
-      
-      <!-- PHASE 4: Classify Rows (y=180) -->
-      <line x1="125" y1="125" x2="125" y2="150" stroke="#4c78a8" stroke-width="2" marker-end="url(#arrowhead)"/>
-      
-      <rect x="15" y="150" width="220" height="55" rx="5" fill="#e0e7ff" stroke="#6366f1" stroke-width="2"/>
-      <text x="125" y="175" text-anchor="middle" font-size="12" font-weight="bold" fill="#1f2937">4. Classify Rows</text>
-      <text x="125" y="192" text-anchor="middle" font-size="10" fill="#666">(Matched / Unmatched)</text>
-      
-      <line x="235" y1="177" x2="250" y2="177" stroke="#4c78a8" stroke-width="2" marker-end="url(#arrowhead)"/>
-      
-      <!-- PHASE 5: Infer Reasons (y=180) -->
-      <rect x="265" y="150" width="220" height="55" rx="5" fill="#fbf8f3" stroke="#f97316" stroke-width="2"/>
-      <text x="375" y="175" text-anchor="middle" font-size="12" font-weight="bold" fill="#1f2937">5. Infer Unmatched Reasons</text>
-      <text x="375" y="192" text-anchor="middle" font-size="10" fill="#666">(LLM: timing priority #1)</text>
-      
-      <line x="485" y1="177" x2="650" y2="177" stroke="#c026d3" stroke-width="2" stroke-dasharray="4" marker-end="url(#arrowhead-purple)"/>
-      <text x="550" y="170" font-size="9" fill="#c026d3">query KB</text>
-      
-      <!-- KB: Suggest Reasons -->
-      <rect x="665" y="150" width="220" height="55" rx="5" fill="#f5f3ff" stroke="#a78bfa" stroke-width="2"/>
-      <text x="775" y="175" text-anchor="middle" font-size="11" font-weight="bold" fill="#1f2937">Suggest Reasons</text>
-      <text x="775" y="192" text-anchor="middle" font-size="9" fill="#666">(inject KB examples/bans)</text>
-      
-      <line x="665" y1="177" x2="650" y2="177" stroke="#c026d3" stroke-width="2" stroke-dasharray="4" marker-end="url(#arrowhead-purple)"/>
-      <text x="650" y="170" font-size="9" fill="#c026d3" text-anchor="end">return</text>
-      
-      <!-- PHASE 6: Display Tables (y=260) -->
-      <line x1="125" y1="205" x2="125" y2="230" stroke="#4c78a8" stroke-width="2" marker-end="url(#arrowhead)"/>
-      
-      <rect x="15" y="230" width="220" height="55" rx="5" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
-      <text x="125" y="255" text-anchor="middle" font-size="12" font-weight="bold" fill="#1f2937">6. Display Tables</text>
-      <text x="125" y="272" text-anchor="middle" font-size="10" fill="#666">(All / Matched / Unmatched)</text>
-      
-      <line x="235" y1="257" x2="250" y2="257" stroke="#4c78a8" stroke-width="2" marker-end="url(#arrowhead)"/>
-      
-      <!-- System: Show Results -->
-      <rect x="265" y="230" width="220" height="55" rx="5" fill="#f0fdfa" stroke="#14b8a6" stroke-width="2"/>
-      <text x="375" y="255" text-anchor="middle" font-size="12" font-weight="bold" fill="#1f2937">Display with Reasons</text>
-      <text x="375" y="272" text-anchor="middle" font-size="10" fill="#666">(frozen headers, sortable)</text>
-      
-      <!-- PHASE 7: Rate Inline (y=340) -->
-      <line x1="125" y1="285" x2="125" y2="310" stroke="#4c78a8" stroke-width="2" marker-end="url(#arrowhead)"/>
-      
-      <rect x="15" y="310" width="220" height="55" rx="5" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/>
-      <text x="125" y="335" text-anchor="middle" font-size="12" font-weight="bold" fill="#1f2937">7. Rate Inline</text>
-      <text x="125" y="352" text-anchor="middle" font-size="10" fill="#666">👍 confirm | 👎 flag wrong</text>
-      
-      <line x="235" y1="337" x2="250" y2="337" stroke="#c026d3" stroke-width="2" stroke-dasharray="4" marker-end="url(#arrowhead-purple)"/>
-      <text x="240" y="330" font-size="9" fill="#c026d3">feedback</text>
-      
-      <!-- System: Record Feedback -->
-      <rect x="265" y="310" width="220" height="55" rx="5" fill="#dbeafe" stroke="#0ea5e9" stroke-width="2"/>
-      <text x="375" y="335" text-anchor="middle" font-size="12" font-weight="bold" fill="#1f2937">Record Feedback</text>
-      <text x="375" y="352" text-anchor="middle" font-size="10" fill="#666">👍→user_reasons|👎→flagged</text>
-      
-      <line x="485" y1="337" x2="650" y2="337" stroke="#c026d3" stroke-width="2" stroke-dasharray="4" marker-end="url(#arrowhead-purple)"/>
-      <text x="550" y="330" font-size="9" fill="#c026d3">submit</text>
-      
-      <!-- KB: Persist Updates -->
-      <rect x="665" y="310" width="220" height="55" rx="5" fill="#fef08a" stroke="#ca8a04" stroke-width="2"/>
-      <text x="775" y="335" text-anchor="middle" font-size="12" font-weight="bold" fill="#1f2937">8. Update KB</text>
-      <text x="775" y="352" text-anchor="middle" font-size="10" fill="#666">(recalc hash, invalidate cache)</text>
-      
-      <!-- PHASE 9: (Optional) Admin Review (y=420) -->
-      <line x1="125" y1="365" x2="125" y2="390" stroke="#9ca3af" stroke-width="2" marker-end="url(#arrowhead)" opacity="0.6"/>
-      <text x="125" y="385" text-anchor="middle" font-size="9" fill="#999">(optional)</text>
-      
-      <rect x="15" y="390" width="220" height="50" rx="5" fill="#e5e7eb" stroke="#6b7280" stroke-width="2" opacity="0.7"/>
-      <text x="125" y="413" text-anchor="middle" font-size="11" font-weight="bold" fill="#4b5563">9. Admin Review</text>
-      <text x="125" y="428" text-anchor="middle" font-size="9" fill="#666">(edit KB)</text>
-      
-      <!-- PHASE 10: Export (y=500) -->
-      <line x1="125" y1="440" x2="125" y2="460" stroke="#4c78a8" stroke-width="2" marker-end="url(#arrowhead)"/>
-      
-      <rect x="15" y="460" width="220" height="50" rx="5" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
-      <text x="125" y="483" text-anchor="middle" font-size="12" font-weight="bold" fill="#1f2937">10. Export Report</text>
-      <text x="125" y="498" text-anchor="middle" font-size="9" fill="#666">(Excel / CSV)</text>
-      
-      <line x="235" y1="485" x2="250" y2="485" stroke="#4c78a8" stroke-width="2" marker-end="url(#arrowhead)"/>
-      
-      <!-- System: Download -->
-      <rect x="265" y="460" width="220" height="50" rx="5" fill="#f0fdfa" stroke="#14b8a6" stroke-width="2"/>
-      <text x="375" y="483" text-anchor="middle" font-size="12" font-weight="bold" fill="#1f2937">Save &amp; Download</text>
-      <text x="375" y="498" text-anchor="middle" font-size="9" fill="#666">(details + reasons)</text>
-      
-      <!-- Feedback Loop: Next Reconciliation -->
-      <path d="M 485 485 Q 575 600 825 380" stroke="#c026d3" stroke-width="2" stroke-dasharray="4" fill="none" marker-end="url(#arrowhead-purple)"/>
-      <text x="600" y="620" font-size="10" fill="#c026d3" font-weight="bold">↻ Next reconciliation</text>
-      <text x="600" y="635" font-size="9" fill="#c026d3">uses learned KB patterns</text>
-    </svg>
-    """,
-    unsafe_allow_html=True,
-)
+st.mermaid("""
+graph TD
+    A["📊 ANALYST: Select Identifier Pair<br/>(e.g., invoice_id)"]
+    B["🔧 SYSTEM: Aggregate & Reconcile<br/>(Group by ID, sum amounts)"]
+    C["⏰ SYSTEM: Pre-detect Timing Diffs<br/>(Code: check date ranges)"]
+    D["📚 AI/KB: Load Context<br/>(user reasons, flagged bans)"]
+    E["🔀 SYSTEM: Classify Rows<br/>(Matched / Unmatched)"]
+    F["🧠 SYSTEM: Infer Unmatched Reasons<br/>(LLM: timing priority #1)"]
+    G["🤖 AI/KB: Suggest Reasons<br/>(inject KB examples/bans)"]
+    H["📋 ANALYST: Review Tables<br/>(All / Matched / Unmatched tabs)"]
+    I["⭐ SYSTEM: Display with Reasons<br/>(frozen headers, sortable)"]
+    J["👍👎 ANALYST: Rate Inline<br/>(confirm or flag wrong)"]
+    K["💾 SYSTEM: Record Feedback<br/>(user_reasons / flagged_reasons)"]
+    L["🔄 AI/KB: Update KB<br/>(recalc hash, invalidate cache)"]
+    M["✅ ANALYST: Export Report<br/>(Excel / CSV)"]
+    N["📥 SYSTEM: Save & Download<br/>(details + reasons)"]
+    O["🔁 NEXT RECONCILIATION<br/>Uses Learned KB Patterns"]
+    
+    A --> B
+    B --> C
+    C --> D
+    C --> E
+    E --> F
+    F --> G
+    G --> F
+    E --> H
+    B --> I
+    H --> J
+    I --> J
+    J --> K
+    K --> L
+    L --> O
+    M --> N
+    N --> O
+    
+    style A fill:#dbeafe,stroke:#0ea5e9,stroke-width:2px
+    style B fill:#fef3c7,stroke:#f59e0b,stroke-width:2px
+    style C fill:#fce7f3,stroke:#db2777,stroke-width:2px
+    style D fill:#fef08a,stroke:#ca8a04,stroke-width:2px
+    style E fill:#e0e7ff,stroke:#6366f1,stroke-width:2px
+    style F fill:#fbf8f3,stroke:#f97316,stroke-width:2px
+    style G fill:#f5f3ff,stroke:#a78bfa,stroke-width:2px
+    style H fill:#dcfce7,stroke:#16a34a,stroke-width:2px
+    style I fill:#f0fdfa,stroke:#14b8a6,stroke-width:2px
+    style J fill:#fef3c7,stroke:#f59e0b,stroke-width:2px
+    style K fill:#dbeafe,stroke:#0ea5e9,stroke-width:2px
+    style L fill:#fef08a,stroke:#ca8a04,stroke-width:2px
+    style M fill:#dcfce7,stroke:#16a34a,stroke-width:2px
+    style N fill:#f0fdfa,stroke:#14b8a6,stroke-width:2px
+    style O fill:#f3e8ff,stroke:#c084fc,stroke-width:3px
+""")
 
 st.caption(
-    "**Swimlane flow**: Analyst (left) interacts with System (center) to review and rate results. "
-    "System queries AI/KB (right) for suggestions and learning. Dashed arrows show KB interactions. "
-    "Feedback loop ensures next reconciliation benefits from user corrections."
+    "**Workflow**: Analyst selects an identifier, System aggregates and classifies rows, AI/KB loads context and suggests reasons (with timing priority). "
+    "Analyst rates each reason inline. Feedback updates KB for next reconciliation. Results exported and downloaded."
 )
+
 
 
 

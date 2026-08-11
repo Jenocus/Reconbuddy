@@ -649,8 +649,7 @@ if uploaded_a and uploaded_b:
                         unmatched_with_edits = apply_reason_edits(details[details["status"] != "Matched"], "suggested_reason")
                         unmatched_edit["Reason"] = unmatched_with_edits["suggested_reason"].values
                         unmatched_edit.insert(0, "Select", False)
-                        unmatched_edit["Flag reason as wrong"] = False
-                        readonly_cols = [c for c in unmatched_edit.columns if c not in ["Reason", "Select", "Flag reason as wrong"]]
+                        readonly_cols = [c for c in unmatched_edit.columns if c not in ["Reason", "Select"]]
                         edited_unmatched = st.data_editor(
                             unmatched_edit,
                             disabled=readonly_cols,
@@ -665,11 +664,6 @@ if uploaded_a and uploaded_b:
                                 "Reason": st.column_config.TextColumn(
                                     "Reason",
                                     help="LLM-suggested reason. Edit to correct it, then click Save to train the AI for future runs on this identifier pair.",
-                                ),
-                                "Flag reason as wrong": st.column_config.CheckboxColumn(
-                                    "Flag reason as wrong",
-                                    help="Check to flag this reason as incorrect. Flagged reasons will be deprioritised by the AI in future runs.",
-                                    width="small",
                                 ),
                             },
                         )
@@ -690,14 +684,22 @@ if uploaded_a and uploaded_b:
                                 st.success(f"Saved {len(reasons_to_save)} reason(s) to knowledge base.")
                             else:
                                 st.info("No reasons entered to save.")
-                            # Record flagged reasons
-                            flagged_count = 0
-                            for _, row in edited_unmatched.iterrows():
-                                if row.get("Flag reason as wrong") and str(row["Reason"]).strip():
-                                    record_flagged_reason(str(row["Reason"]).strip())
-                                    flagged_count += 1
-                            if flagged_count:
-                                st.warning(f"Flagged {flagged_count} reason(s) as wrong — the AI will avoid these in future runs.")
+
+                        # Flagging — use multiselect so state survives reruns reliably
+                        st.markdown("**Flag reasons as wrong:**")
+                        current_reasons = sorted(set(
+                            r for r in unmatched_edit["Reason"].astype(str).tolist() if r.strip()
+                        ))
+                        reasons_to_flag = st.multiselect(
+                            "Select reason(s) to flag as incorrect — the AI will never use these again",
+                            options=current_reasons,
+                            key=f"flag_multiselect_{selected_key}",
+                        )
+                        if st.button("Flag selected reasons as wrong", key=f"flag_reasons_{selected_key}", type="secondary"):
+                            if reasons_to_flag:
+                                for reason in reasons_to_flag:
+                                    record_flagged_reason(reason)
+                                st.warning(f"Flagged {len(reasons_to_flag)} reason(s) as wrong — the AI will avoid these in future runs.")
                         
                         # Filter Source A/B rows based on selected checkboxes
                         selected_identifiers = edited_unmatched[edited_unmatched["Select"]]["identifier"].astype(str).tolist()

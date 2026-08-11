@@ -62,3 +62,27 @@ st.markdown(
 )
 
 st.caption("This methodology is intentionally transparent so analysts can inspect each stage and understand why the application made a particular recommendation.")
+
+st.subheader("Key design choices")
+st.table(
+    {
+        "Decision": [
+            "Direct LLM prompting instead of RAG",
+            "Session state for pair memory (not a vector store)",
+            "No persistent database",
+            "LLM used for field mapping, not rules",
+            "Full document text sent to LLM (no chunking)",
+            "GPT-4o-mini as the LLM",
+            "Streamlit session state for caching analysis",
+        ],
+        "Reason": [
+            "Reconciliation inputs are small structured tables that fit within a single prompt window; retrieval overhead is unnecessary.",
+            "Users typically compare the same two sources in one sitting. Session state is sufficient and avoids the complexity of a vector store for this pattern.",
+            "No user data is retained between sessions, reducing privacy risk and infrastructure overhead.",
+            "Column names often differ across systems (e.g. 'InvNum' vs 'invoice_id'). An LLM interprets intent better than brittle keyword rules.",
+            "Uploaded files are financial tables, not long prose documents. Chunking would fragment tabular structure and reduce accuracy.",
+            "Balances cost, speed, and reasoning quality for structured data interpretation tasks.",
+            "LLM analysis for the same pair of sources is deterministic enough to cache within a session, avoiding redundant API calls when the user revisits settings.",
+        ],
+    }
+)

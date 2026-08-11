@@ -168,7 +168,7 @@ def get_flagged_reason_context() -> str:
     top = sorted(flagged.items(), key=lambda x: x[1], reverse=True)[:10]
     lines = [f"  - {r!r} (flagged {c} time(s) as incorrect)" for r, c in top]
     return (
-        "The following reason labels have been flagged as WRONG by users — "
-        "avoid using them unless there is very strong evidence:\n"
+        "The following reason labels have been flagged as INCORRECT by users — "
+        "NEVER use these labels under any circumstances:\n"
         + "\n".join(lines)
     )

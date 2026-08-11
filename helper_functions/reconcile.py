@@ -9,7 +9,7 @@ import streamlit as st
 from PyPDF2 import PdfReader
 
 from helper_functions.llm import get_completion
-from helper_functions.knowledge_base import get_pairing_context, get_mismatch_reason_context, get_user_reason_context, get_flagged_reason_context
+from helper_functions.knowledge_base import get_pairing_context, get_mismatch_reason_context, get_user_reason_context, get_flagged_reason_context, load_kb
 
 
 def parse_pdf(file) -> str:
@@ -262,22 +262,30 @@ def infer_unmatched_reasons(
     reason_hint = get_mismatch_reason_context()
     user_reason_hint = get_user_reason_context(identifier_field_a, identifier_field_b) if identifier_field_a and identifier_field_b else ""
     flagged_reason_hint = get_flagged_reason_context()
-    
-    # Build prompt without timing difference (already handled)
+
+    # Build explicit list of banned reason labels (user-flagged + hard-coded irrelevant ones)
+    kb_flagged = load_kb().get("flagged_reasons", {})
+    banned_labels = ["missing invoice"] + list(kb_flagged.keys())
+    banned_str = ", ".join(f"'{r}'" for r in banned_labels)
+
+    # Build prompt — timing difference is priority #1 for LLM as well
     priority_text = (
-        "1. DUPLICATE POSTING (highest priority): the same transaction appears more than once in one source.\n"
-        "2. SETTLEMENT DELAY: payment has been initiated but not yet settled.\n"
-        "3. CURRENCY VARIATION: exchange rate or currency conversion difference.\n"
-        "4. FEES: bank or processing fees not captured in the other source.\n"
-        "5. PERIOD MISMATCH: amounts may belong to different reporting periods.\n"
-        "6. DATA EXTRACTION MISMATCH: field parsing or export error.\n"
+        "1. TIMING DIFFERENCE (highest priority): the transaction appears in one source but not the other "
+        "because it belongs to a different reporting period or the dates differ between sources. "
+        "Label it 'timing difference'.\n"
+        "2. DUPLICATE POSTING: the same transaction appears more than once in one source.\n"
+        "3. SETTLEMENT DELAY: payment has been initiated but not yet settled.\n"
+        "4. CURRENCY VARIATION: exchange rate or currency conversion difference.\n"
+        "5. FEES: bank or processing fees not captured in the other source.\n"
+        "6. PERIOD MISMATCH: amounts may belong to different reporting periods.\n"
+        "7. DATA EXTRACTION MISMATCH: field parsing or export error.\n"
     )
-    
+
     prompt = (
         "You are a financial reconciliation analyst. Review the following unmatched reconciliation rows from two sources. "
         "For each row assign exactly one reason label. Follow this priority order:\n"
         + priority_text
-        + "Do not use 'missing invoice' or 'timing difference' as a reason (those are pre-detected). "
+        + (f"NEVER use any of these reason labels — they are strictly forbidden: {banned_str}. Choose a different label from the priority list above instead. " if banned_labels else "")
         + (f"{flagged_reason_hint}\n" if flagged_reason_hint else "")
         + (f"{user_reason_hint}\n" if user_reason_hint else "")
         + (f"{reason_hint}\n" if reason_hint else "")

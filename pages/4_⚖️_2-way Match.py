@@ -591,6 +591,25 @@ if uploaded_a and uploaded_b:
                     if feedback_key not in st.session_state:
                         st.session_state[feedback_key] = {}
 
+                    # CSS: remove borders from thumb buttons (last 2 cols of any row)
+                    st.markdown("""
+                    <style>
+                    div.stColumns > div:last-child button[data-testid="baseButton-secondary"],
+                    div.stColumns > div:nth-last-child(2) button[data-testid="baseButton-secondary"] {
+                        border: none !important;
+                        background: transparent !important;
+                        box-shadow: none !important;
+                        padding: 2px 6px !important;
+                        min-height: 30px !important;
+                    }
+                    div.stColumns > div:last-child button[data-testid="baseButton-secondary"]:hover,
+                    div.stColumns > div:nth-last-child(2) button[data-testid="baseButton-secondary"]:hover {
+                        background: rgba(0,0,0,0.05) !important;
+                        border-radius: 4px !important;
+                    }
+                    </style>
+                    """, unsafe_allow_html=True)
+
                     def apply_reason_edits(df, reason_column_name="suggested_reason"):
                         df = df.copy()
                         for identifier, edited_reason in st.session_state[reason_edits_key].items():
@@ -606,73 +625,69 @@ if uploaded_a and uploaded_b:
                             return "–"
 
                     def render_reason_rows(rows_df, tab_key, show_select=False, show_status=False):
-                        """Render rows with editable Reason and inline 👍/👎 per row."""
                         import hashlib as _hl
-                        # Header
+
                         col_widths = []
                         headers = []
                         if show_select:
-                            col_widths.append(0.4)
-                            headers.append("☑")
-                        headers += ["Identifier", "Amt A", "Amt B", "Diff"]
-                        col_widths += [2.5, 1.4, 1.4, 1.1]
+                            col_widths.append(0.4); headers.append("☑")
+                        col_widths += [2.5, 1.4, 1.4, 1.1]; headers += ["Identifier", "Amt A", "Amt B", "Diff"]
                         if show_status:
-                            col_widths.append(1.2)
-                            headers.append("Status")
-                        col_widths += [3, 0.55, 0.55]
-                        headers += ["Reason", "👍", "👎"]
-
-                        hcols = st.columns(col_widths)
-                        for hc, h in zip(hcols, headers):
-                            hc.markdown(f"**{h}**")
+                            col_widths.append(1.2); headers.append("Status")
+                        col_widths += [3, 0.55, 0.55]; headers += ["Reason", "👍", "👎"]
 
                         selected_ids = []
-                        for pos, (_, row) in enumerate(rows_df.iterrows()):
-                            identifier = str(row["identifier"])
-                            current_reason = st.session_state[reason_edits_key].get(
-                                identifier, str(row.get("Reason", "") or "").strip()
-                            )
-                            feedback = st.session_state[feedback_key].get(current_reason, "")
-                            rkey = _hl.md5(f"{tab_key}_{pos}_{identifier}".encode()).hexdigest()[:10]
+                        with st.container(height=450):
+                            # Header row
+                            hcols = st.columns(col_widths)
+                            for hc, h in zip(hcols, headers):
+                                hc.markdown(f"**{h}**")
+                            st.markdown('<hr style="margin:2px 0;border:none;border-top:1px solid #e6e6e6;">', unsafe_allow_html=True)
 
-                            rcols = st.columns(col_widths)
-                            ci = 0
-                            if show_select:
-                                sel = rcols[ci].checkbox("", key=f"sel_{rkey}", label_visibility="collapsed")
-                                if sel:
-                                    selected_ids.append(identifier)
+                            for pos, (_, row) in enumerate(rows_df.iterrows()):
+                                identifier = str(row["identifier"])
+                                current_reason = st.session_state[reason_edits_key].get(
+                                    identifier, str(row.get("Reason", "") or "").strip()
+                                )
+                                feedback = st.session_state[feedback_key].get(current_reason, "")
+                                rkey = _hl.md5(f"{tab_key}_{pos}_{identifier}".encode()).hexdigest()[:10]
+
+                                rcols = st.columns(col_widths)
+                                ci = 0
+                                if show_select:
+                                    sel = rcols[ci].checkbox("", key=f"sel_{rkey}", label_visibility="collapsed")
+                                    if sel: selected_ids.append(identifier)
+                                    ci += 1
+                                rcols[ci].markdown(f"<small>{identifier}</small>", unsafe_allow_html=True); ci += 1
+                                rcols[ci].markdown(f"<small>{fmt_num(row.get('total_amount_a'))}</small>", unsafe_allow_html=True); ci += 1
+                                rcols[ci].markdown(f"<small>{fmt_num(row.get('total_amount_b'))}</small>", unsafe_allow_html=True); ci += 1
+                                rcols[ci].markdown(f"<small>{fmt_num(row.get('difference'))}</small>", unsafe_allow_html=True); ci += 1
+                                if show_status:
+                                    rcols[ci].markdown(f"<small>{row.get('status', '')}</small>", unsafe_allow_html=True); ci += 1
+
+                                new_reason = rcols[ci].text_input(
+                                    "", value=current_reason, key=f"ri_{rkey}",
+                                    label_visibility="collapsed"
+                                ); ci += 1
+                                if new_reason != current_reason:
+                                    st.session_state[reason_edits_key][identifier] = new_reason
+                                reason_for_rating = new_reason or current_reason
+
+                                with rcols[ci]:
+                                    if st.button("✅" if feedback == "up" else "👍", key=f"up_{rkey}", help="Confirm correct — saves to KB"):
+                                        if reason_for_rating:
+                                            record_user_reasons(field_a, field_b, {identifier: reason_for_rating})
+                                            st.session_state[feedback_key][reason_for_rating] = "up"
+                                            st.rerun()
                                 ci += 1
-                            rcols[ci].caption(identifier); ci += 1
-                            rcols[ci].caption(fmt_num(row.get("total_amount_a"))); ci += 1
-                            rcols[ci].caption(fmt_num(row.get("total_amount_b"))); ci += 1
-                            rcols[ci].caption(fmt_num(row.get("difference"))); ci += 1
-                            if show_status:
-                                rcols[ci].caption(str(row.get("status", ""))); ci += 1
+                                with rcols[ci]:
+                                    if st.button("❌" if feedback == "down" else "👎", key=f"dn_{rkey}", help="Flag as wrong — AI will never use this again"):
+                                        if reason_for_rating:
+                                            record_flagged_reason(reason_for_rating)
+                                            st.session_state[feedback_key][reason_for_rating] = "down"
+                                            st.rerun()
 
-                            new_reason = rcols[ci].text_input(
-                                "", value=current_reason, key=f"ri_{rkey}",
-                                label_visibility="collapsed",
-                            ); ci += 1
-                            if new_reason != current_reason:
-                                st.session_state[reason_edits_key][identifier] = new_reason
-
-                            reason_for_rating = new_reason or current_reason
-                            up_label = "✅" if feedback == "up" else "👍"
-                            dn_label = "❌" if feedback == "down" else "👎"
-
-                            with rcols[ci]:
-                                if st.button(up_label, key=f"up_{rkey}", help="Confirm correct — saves to KB"):
-                                    if reason_for_rating:
-                                        record_user_reasons(field_a, field_b, {identifier: reason_for_rating})
-                                        st.session_state[feedback_key][reason_for_rating] = "up"
-                                        st.rerun()
-                            ci += 1
-                            with rcols[ci]:
-                                if st.button(dn_label, key=f"dn_{rkey}", help="Flag as wrong — AI will never use this again"):
-                                    if reason_for_rating:
-                                        record_flagged_reason(reason_for_rating)
-                                        st.session_state[feedback_key][reason_for_rating] = "down"
-                                        st.rerun()
+                                st.markdown('<hr style="margin:1px 0;border:none;border-top:1px solid #f0f0f0;">', unsafe_allow_html=True)
 
                         return selected_ids
 
@@ -704,7 +719,7 @@ if uploaded_a and uploaded_b:
                         matched_edit = details[details["status"] == "Matched"][[
                             "identifier", "total_amount_a", "total_amount_b", "difference"
                         ]].copy()
-                        st.dataframe(matched_edit, use_container_width=True)
+                        st.dataframe(format_dataframe_numbers(matched_edit), use_container_width=True)
                     with unmatched_tab:
                         st.markdown(f"### Unmatched rows ({unmatched_count})")
                         st.markdown(

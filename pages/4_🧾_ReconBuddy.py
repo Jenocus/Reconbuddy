@@ -384,144 +384,157 @@ if uploaded_a and uploaded_b:
                             amount_a,
                             amount_b,
                         )
-
                         details = result["details"]
-
                         totals = {
                             "Total A": result["total_a"],
                             "Total B": result["total_b"],
                             "Matched": int(details[details["status"] == "Matched"].shape[0]) if not details.empty else 0,
                             "Unmatched": int(details[details["status"] == "Unmatched"].shape[0]) if not details.empty else 0,
                         }
-
-                        st.subheader("Reconciliation Results")
-                        metrics = st.columns(4)
-                        metrics[0].metric("Source A total $", f"{totals['Total A']:,.2f}")
-                        metrics[1].metric("Source B total $", f"{totals['Total B']:,.2f}")
-                        metrics[2].markdown(
-                            f"**Matched identifiers**<br><span style='color:green;font-size:24px'>{totals['Matched']:,}</span>",
-                            unsafe_allow_html=True,
-                        )
-                        metrics[3].markdown(
-                            f"**Unmatched identifiers**<br><span style='color:red;font-size:24px'>{totals['Unmatched']:,}</span>",
-                            unsafe_allow_html=True,
-                        )
-
                         if not details.empty:
                             unmatched = details[details["status"] != "Matched"]
                             matched = details[details["status"] == "Matched"]
                             matched_amount_a = matched["total_amount_a"].sum()
                             matched_amount_b = matched["total_amount_b"].sum()
-
                             unmatched_total_a = unmatched["total_amount_a"].sum()
                             unmatched_total_b = unmatched["total_amount_b"].sum()
-                    unmatched_count = int(unmatched.shape[0])
+                            unmatched_count = int(unmatched.shape[0])
+                            matched_count = int(matched.shape[0])
+                            unmatched_difference = unmatched_total_a - unmatched_total_b
+                            pct_unmatched_rows_a = unmatched_count / len(source_a["dataframe"]) * 100 if len(source_a["dataframe"]) else 0.0
+                            pct_unmatched_rows_b = unmatched_count / len(source_b["dataframe"]) * 100 if len(source_b["dataframe"]) else 0.0
+                            pct_unmatched_a = unmatched_total_a / totals["Total A"] * 100 if totals["Total A"] != 0 else 0.0
+                            pct_unmatched_b = unmatched_total_b / totals["Total B"] * 100 if totals["Total B"] != 0 else 0.0
 
-                    if len(source_a["dataframe"]):
-                        pct_unmatched_rows_a = unmatched_count / len(source_a["dataframe"]) * 100
-                    else:
-                        pct_unmatched_rows_a = 0.0
-                    if len(source_b["dataframe"]):
-                        pct_unmatched_rows_b = unmatched_count / len(source_b["dataframe"]) * 100
-                    else:
-                        pct_unmatched_rows_b = 0.0
+                            suggestion_map = infer_unmatched_reasons(
+                                unmatched,
+                                source_a["name"],
+                                source_b["name"],
+                                amount_a,
+                                amount_b,
+                                identifier_field_a=selected["source_a_field"],
+                                identifier_field_b=selected["source_b_field"],
+                            )
+                            details["suggested_reason"] = details["identifier"].astype(str).map(suggestion_map).fillna("")
+
+                            reason_counts = unmatched["reason"].value_counts().rename_axis("reason").reset_index(name="count")
+                            top_reasons = reason_counts.head(3)["reason"].tolist()
+
+                            record_confirmed_pairing(selected["source_a_field"], selected["source_b_field"])
+                            suggested_reason_counts = (
+                                details[details["suggested_reason"].str.strip() != ""]["suggested_reason"]
+                                .value_counts()
+                                .rename_axis("reason")
+                                .reset_index(name="count")
+                            )
+                            if not suggested_reason_counts.empty:
+                                record_mismatch_reasons(dict(zip(suggested_reason_counts["reason"], suggested_reason_counts["count"])))
+
+                            summary_text = summarize_reconciliation_insights(
+                                source_a,
+                                source_b,
+                                matched_amount_a,
+                                matched_amount_b,
+                                unmatched_total_a,
+                                unmatched_total_b,
+                                totals["Total A"],
+                                totals["Total B"],
+                                matched_count,
+                                unmatched_count,
+                                reason_counts,
+                                top_reasons,
+                            )
+
+                            unmatched_ids_a = unmatched[unmatched["total_amount_a"].notna()]["identifier"].astype(str).unique().tolist()
+                            unmatched_ids_b = unmatched[unmatched["total_amount_b"].notna()]["identifier"].astype(str).unique().tolist()
+                            unmatched_a_rows = source_a["dataframe"][source_a["dataframe"][selected["source_a_field"]].astype(str).isin(unmatched_ids_a)] if selected["source_a_field"] in source_a["dataframe"].columns else pd.DataFrame()
+                            unmatched_b_rows = source_b["dataframe"][source_b["dataframe"][selected["source_b_field"]].astype(str).isin(unmatched_ids_b)] if selected["source_b_field"] in source_b["dataframe"].columns else pd.DataFrame()
+
+                            st.session_state[f"recon_result_{selected_key}"] = {
+                                "details": details,
+                                "totals": totals,
+                                "matched_amount_a": matched_amount_a,
+                                "matched_amount_b": matched_amount_b,
+                                "unmatched_total_a": unmatched_total_a,
+                                "unmatched_total_b": unmatched_total_b,
+                                "unmatched_difference": unmatched_difference,
+                                "matched_count": matched_count,
+                                "unmatched_count": unmatched_count,
+                                "pct_unmatched_a": pct_unmatched_a,
+                                "pct_unmatched_b": pct_unmatched_b,
+                                "pct_unmatched_rows_a": pct_unmatched_rows_a,
+                                "pct_unmatched_rows_b": pct_unmatched_rows_b,
+                                "summary_text": summary_text,
+                                "reason_counts": reason_counts,
+                                "unmatched_a_rows": unmatched_a_rows,
+                                "unmatched_b_rows": unmatched_b_rows,
+                                "source_a_len": len(source_a["dataframe"]),
+                                "source_b_len": len(source_b["dataframe"]),
+                                "source_a_name": source_a["name"],
+                                "source_b_name": source_b["name"],
+                                "field_a": selected["source_a_field"],
+                                "field_b": selected["source_b_field"],
+                            }
+                        else:
+                            st.session_state.pop(f"recon_result_{selected_key}", None)
+                            st.warning("No reconciliation rows were produced.")
+
+                # Render results from session state — persists across reruns including Save button click
+                _rr = st.session_state.get(f"recon_result_{selected_key}")
+                if _rr:
+                    details = _rr["details"]
+                    totals = _rr["totals"]
+                    matched_amount_a = _rr["matched_amount_a"]
+                    matched_amount_b = _rr["matched_amount_b"]
+                    unmatched_total_a = _rr["unmatched_total_a"]
+                    unmatched_total_b = _rr["unmatched_total_b"]
+                    unmatched_difference = _rr["unmatched_difference"]
+                    matched_count = _rr["matched_count"]
+                    unmatched_count = _rr["unmatched_count"]
+                    pct_unmatched_a = _rr["pct_unmatched_a"]
+                    pct_unmatched_b = _rr["pct_unmatched_b"]
+                    pct_unmatched_rows_a = _rr["pct_unmatched_rows_a"]
+                    pct_unmatched_rows_b = _rr["pct_unmatched_rows_b"]
+                    summary_text = _rr["summary_text"]
+                    reason_counts = _rr["reason_counts"]
+                    unmatched_a_rows = _rr["unmatched_a_rows"]
+                    unmatched_b_rows = _rr["unmatched_b_rows"]
+                    field_a = _rr["field_a"]
+                    field_b = _rr["field_b"]
 
                     def unmatched_badge(pct):
                         color = "green" if pct < 20 else "orange" if pct < 50 else "red"
                         return f"<span style='color:{color};font-size:20px;font-weight:600;'>{pct:.1f}% unmatched</span>"
 
+                    st.subheader("Reconciliation Results")
+                    metrics = st.columns(4)
+                    metrics[0].metric("Source A total $", f"{totals['Total A']:,.2f}")
+                    metrics[1].metric("Source B total $", f"{totals['Total B']:,.2f}")
+                    metrics[2].markdown(
+                        f"**Matched identifiers**<br><span style='color:green;font-size:24px'>{matched_count:,}</span>",
+                        unsafe_allow_html=True,
+                    )
+                    metrics[3].markdown(
+                        f"**Unmatched identifiers**<br><span style='color:red;font-size:24px'>{unmatched_count:,}</span>",
+                        unsafe_allow_html=True,
+                    )
+
                     row_metrics = st.columns(2)
                     row_metrics[0].markdown(
-                        f"**Rows in Source A**<br>{len(source_a['dataframe']):,}<br>Unmatched amount: {unmatched_total_a:,.2f}<br>{unmatched_badge(pct_unmatched_rows_a)}",
+                        f"**Rows in Source A**<br>{_rr['source_a_len']:,}<br>Unmatched amount: {unmatched_total_a:,.2f}<br>{unmatched_badge(pct_unmatched_rows_a)}",
                         unsafe_allow_html=True,
                     )
                     row_metrics[1].markdown(
-                        f"**Rows in Source B**<br>{len(source_b['dataframe']):,}<br>Unmatched amount: {unmatched_total_b:,.2f}<br>{unmatched_badge(pct_unmatched_rows_b)}",
+                        f"**Rows in Source B**<br>{_rr['source_b_len']:,}<br>Unmatched amount: {unmatched_total_b:,.2f}<br>{unmatched_badge(pct_unmatched_rows_b)}",
                         unsafe_allow_html=True,
                     )
 
-                    suggestion_map = infer_unmatched_reasons(
-                        unmatched,
-                        source_a["name"],
-                        source_b["name"],
-                        amount_a,
-                        amount_b,
-                        identifier_field_a=selected["source_a_field"],
-                        identifier_field_b=selected["source_b_field"],
-                    )
-                    details["suggested_reason"] = details["identifier"].astype(str).map(suggestion_map).fillna("")
                     details_styled = format_dataframe_numbers(details)
-
-                    unmatched_total_a = unmatched["total_amount_a"].sum()
-                    unmatched_total_b = unmatched["total_amount_b"].sum()
-                    unmatched_difference = unmatched_total_a - unmatched_total_b
-                    matched_count = int(details[details["status"] == "Matched"].shape[0])
-                    unmatched_count = int(unmatched.shape[0])
-
-                    if totals["Total A"] != 0:
-                        pct_unmatched_a = unmatched_total_a / totals["Total A"] * 100
-                    else:
-                        pct_unmatched_a = 0.0
-                    if totals["Total B"] != 0:
-                        pct_unmatched_b = unmatched_total_b / totals["Total B"] * 100
-                    else:
-                        pct_unmatched_b = 0.0
-
-                    summary_lines = [
-                        f"**Executive Summary**",
-                        f"{unmatched_count:,} unmatched identifier(s) were found, representing {unmatched_total_a:,.2f} in Source A and {unmatched_total_b:,.2f} in Source B.",
-                        f"This is {pct_unmatched_a:.1f}% of Source A total and {pct_unmatched_b:.1f}% of Source B total.",
-                    ]
-
-                    if unmatched_count == 0:
-                        summary_lines.append("All reconciled identifiers matched.")
-                    else:
-                        if abs(unmatched_difference) > 0:
-                            diff_text = f"Source A is {'higher' if unmatched_difference > 0 else 'lower'} by {abs(unmatched_difference):,.2f} for unmatched amounts."
-                            summary_lines.append(diff_text)
-                        if pct_unmatched_a > pct_unmatched_b:
-                            summary_lines.append("Source A has a larger unmatched exposure proportionally.")
-                        elif pct_unmatched_b > pct_unmatched_a:
-                            summary_lines.append("Source B has a larger unmatched exposure proportionally.")
-                        else:
-                            summary_lines.append("Both sources have similar unmatched exposure proportions.")
-
-                    reason_counts = unmatched["reason"].value_counts().rename_axis("reason").reset_index(name="count")
-                    top_reasons = reason_counts.head(3)["reason"].tolist()
-
-                    # Persist confirmed pairing and LLM-suggested semantic reasons to the knowledge base.
-                    # Use suggested_reason (LLM output) — NOT the structural "reason" column which only
-                    # contains labels like "Missing on source A" / "Mismatch" and would corrupt the KB hint.
-                    record_confirmed_pairing(selected["source_a_field"], selected["source_b_field"])
-                    suggested_reason_counts = (
-                        details[details["suggested_reason"].str.strip() != ""]["suggested_reason"]
-                        .value_counts()
-                        .rename_axis("reason")
-                        .reset_index(name="count")
-                    )
-                    if not suggested_reason_counts.empty:
-                        record_mismatch_reasons(dict(zip(suggested_reason_counts["reason"], suggested_reason_counts["count"])))
-
-                    summary_text = summarize_reconciliation_insights(
-                        source_a,
-                        source_b,
-                        matched_amount_a,
-                        matched_amount_b,
-                        unmatched_total_a,
-                        unmatched_total_b,
-                        totals["Total A"],
-                        totals["Total B"],
-                        matched_count,
-                        unmatched_count,
-                        reason_counts,
-                        top_reasons,
-                    )
-
                     reason_counts_chart = reason_counts.copy()
                     reason_counts_chart.columns = ["Reason", "Count"]
                     exposure_data = pd.DataFrame(
                         {
-                            "Source": [source_a["name"], source_b["name"], source_a["name"], source_b["name"]],
+                            "Source": [_rr["source_a_name"], _rr["source_b_name"], _rr["source_a_name"], _rr["source_b_name"]],
                             "Type": ["Matched", "Matched", "Unmatched", "Unmatched"],
                             "Amount": [matched_amount_a, matched_amount_b, unmatched_total_a, unmatched_total_b],
                         }
@@ -547,11 +560,6 @@ if uploaded_a and uploaded_b:
                         tooltip=["Source", "Type", "Amount"],
                     ).properties(height=300)
                     st.altair_chart(exposure_chart, use_container_width=True)
-
-                    unmatched_ids_a = unmatched[unmatched["total_amount_a"].notna()]["identifier"].astype(str).unique().tolist()
-                    unmatched_ids_b = unmatched[unmatched["total_amount_b"].notna()]["identifier"].astype(str).unique().tolist()
-                    unmatched_a_rows = source_a["dataframe"][source_a["dataframe"][selected["source_a_field"]].astype(str).isin(unmatched_ids_a)] if selected["source_a_field"] in source_a["dataframe"].columns else pd.DataFrame()
-                    unmatched_b_rows = source_b["dataframe"][source_b["dataframe"][selected["source_b_field"]].astype(str).isin(unmatched_ids_b)] if selected["source_b_field"] in source_b["dataframe"].columns else pd.DataFrame()
 
                     all_tab, matched_tab, unmatched_tab = st.tabs([
                         "All",
@@ -579,7 +587,7 @@ if uploaded_a and uploaded_b:
                             column_config={
                                 "Your reason": st.column_config.TextColumn(
                                     "Your reason",
-                                    help="Correct or confirm the mismatch reason. Saved reasons will be used to train the AI for future runs on this identifier pair.",
+                                    help="Correct or confirm the mismatch reason. Saved reasons will train the AI for future runs on this identifier pair.",
                                 )
                             },
                         )
@@ -590,11 +598,7 @@ if uploaded_a and uploaded_b:
                                 if str(row["Your reason"]).strip()
                             }
                             if reasons_to_save:
-                                record_user_reasons(
-                                    selected["source_a_field"],
-                                    selected["source_b_field"],
-                                    reasons_to_save,
-                                )
+                                record_user_reasons(field_a, field_b, reasons_to_save)
                                 st.success(f"Saved {len(reasons_to_save)} reason(s) to knowledge base.")
                             else:
                                 st.info("No reasons entered to save.")
@@ -620,8 +624,6 @@ if uploaded_a and uploaded_b:
                         file_name="reconciliation.csv",
                         mime="text/csv",
                     )
-                else:
-                    st.warning("No reconciliation rows were produced.")
         else:
             if "recon_candidates" in st.session_state:
                 st.error("No shared identifier candidates were found.")

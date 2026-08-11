@@ -199,28 +199,64 @@ def infer_unmatched_reasons(
     amount_field_b: str,
     identifier_field_a: str = "",
     identifier_field_b: str = "",
+    source_a_df: pd.DataFrame = None,
+    source_b_df: pd.DataFrame = None,
     max_rows: int = 20,
 ):
     if unmatched_df is None or unmatched_df.empty:
         return {}
 
-    sample = unmatched_df.head(max_rows)[[
-        "identifier",
-        "total_amount_a",
-        "total_amount_b",
-    ]].fillna("")
+    # Detect date columns in source dataframes
+    date_cols = []
+    if source_a_df is not None:
+        for col in source_a_df.columns:
+            if any(term in col.lower() for term in ["date", "time", "timestamp", "posted", "period"]):
+                date_cols.append(col)
+    if source_b_df is not None:
+        for col in source_b_df.columns:
+            if any(term in col.lower() for term in ["date", "time", "timestamp", "posted", "period"]) and col not in date_cols:
+                date_cols.append(col)
+
+    # Build sample with key columns plus any date columns that exist
+    sample_cols = ["identifier", "total_amount_a", "total_amount_b"]
+    available_cols = [c for c in sample_cols if c in unmatched_df.columns]
+    for date_col in date_cols:
+        if date_col in unmatched_df.columns:
+            available_cols.append(date_col)
+
+    sample = unmatched_df.head(max_rows)[available_cols].fillna("")
 
     rows = sample.to_dict(orient="records")
     reason_hint = get_mismatch_reason_context()
     user_reason_hint = get_user_reason_context(identifier_field_a, identifier_field_b) if identifier_field_a and identifier_field_b else ""
+    
+    # Build prompt with priority order based on whether date columns are present
+    if date_cols:
+        priority_text = (
+            "1. TIMING DIFFERENCE (highest priority): the dates in the data differ significantly between sources, "
+            "indicating the transaction appears in different reporting periods. Label it 'timing difference'.\n"
+            "2. PERIOD MISMATCH: amounts exist on both sides but belong to different reporting periods.\n"
+            "3. SETTLEMENT DELAY: payment has been initiated but not yet settled.\n"
+            "4. DUPLICATE POSTING: the same transaction appears more than once in one source.\n"
+            "5. CURRENCY VARIATION: exchange rate or currency conversion difference.\n"
+            "6. FEES: bank or processing fees not captured in the other source.\n"
+            "7. DATA EXTRACTION MISMATCH: field parsing or export error.\n"
+        )
+    else:
+        priority_text = (
+            "1. DUPLICATE POSTING (highest priority): the same transaction appears more than once in one source.\n"
+            "2. SETTLEMENT DELAY: payment has been initiated but not yet settled.\n"
+            "3. CURRENCY VARIATION: exchange rate or currency conversion difference.\n"
+            "4. FEES: bank or processing fees not captured in the other source.\n"
+            "5. DATA EXTRACTION MISMATCH: field parsing or export error.\n"
+            "6. PERIOD MISMATCH: amounts may belong to different reporting periods.\n"
+        )
+    
     prompt = (
         "You are a financial reconciliation analyst. Review the following unmatched reconciliation rows from two sources. "
-        "For each row, infer the most likely reason the amounts do not align, focusing on timing and period differences. "
-        "Assume the sources may represent different reporting windows (monthly batches, rolling periods, or statement dates). "
-        "Identify date-related fields in the samples and use them to determine whether one report is outside the other report's period. "
-        "If one source appears to include a date outside the other source's reporting period, label it as a timing difference. "
-        "Prefer explanations such as timing difference, period mismatch, settlement delay, duplicate posting, currency variation, fees, or data extraction mismatches. "
-        "Do not use missing invoice as a reason. "
+        "For each row assign exactly one reason label. Follow this priority order:\n"
+        + priority_text
+        + "Do not use 'missing invoice' as a reason. "
         + (f"{user_reason_hint}\n" if user_reason_hint else "")
         + (f"{reason_hint}\n" if reason_hint else "")
         + "Respond only with valid JSON in this format: [\n"

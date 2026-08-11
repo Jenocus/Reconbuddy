@@ -414,6 +414,8 @@ if uploaded_a and uploaded_b:
                                 amount_b,
                                 identifier_field_a=selected["source_a_field"],
                                 identifier_field_b=selected["source_b_field"],
+                                source_a_df=source_a["dataframe"],
+                                source_b_df=source_b["dataframe"],
                             )
                             details["suggested_reason"] = details["identifier"].astype(str).map(suggestion_map).fillna("")
 
@@ -576,26 +578,28 @@ if uploaded_a and uploaded_b:
                             f"**Unmatched total in Source A:** {unmatched_total_a:,.2f}  \
                             **Unmatched total in Source B:** {unmatched_total_b:,.2f}"
                         )
-                        unmatched_edit = details[details["status"] != "Matched"].copy()
-                        unmatched_edit["Your reason"] = unmatched_edit["suggested_reason"]
-                        readonly_cols = [c for c in unmatched_edit.columns if c != "Your reason"]
+                        unmatched_edit = details[details["status"] != "Matched"][
+                            ["identifier", "total_amount_a", "total_amount_b", "difference"]
+                        ].copy()
+                        unmatched_edit["Reason"] = details.loc[details["status"] != "Matched", "suggested_reason"].values
+                        readonly_cols = [c for c in unmatched_edit.columns if c != "Reason"]
                         edited_unmatched = st.data_editor(
                             unmatched_edit,
                             disabled=readonly_cols,
                             use_container_width=True,
                             key=f"unmatched_editor_{selected_key}",
                             column_config={
-                                "Your reason": st.column_config.TextColumn(
-                                    "Your reason",
-                                    help="Correct or confirm the mismatch reason. Saved reasons will train the AI for future runs on this identifier pair.",
+                                "Reason": st.column_config.TextColumn(
+                                    "Reason",
+                                    help="LLM-suggested reason. Edit to correct it, then click Save to train the AI for future runs on this identifier pair.",
                                 )
                             },
                         )
                         if st.button("Save reasons to knowledge base", key=f"save_reasons_{selected_key}"):
                             reasons_to_save = {
-                                str(row["identifier"]): str(row["Your reason"]).strip()
+                                str(row["identifier"]): str(row["Reason"]).strip()
                                 for _, row in edited_unmatched.iterrows()
-                                if str(row["Your reason"]).strip()
+                                if str(row["Reason"]).strip()
                             }
                             if reasons_to_save:
                                 record_user_reasons(field_a, field_b, reasons_to_save)

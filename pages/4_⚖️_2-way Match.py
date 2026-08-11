@@ -16,7 +16,7 @@ from helper_functions.reconcile import (
     summarize_reconciliation_insights,
     _infer_decimal_precision,
 )
-from helper_functions.knowledge_base import record_confirmed_pairing, record_mismatch_reasons, record_user_reasons
+from helper_functions.knowledge_base import record_confirmed_pairing, record_mismatch_reasons, record_user_reasons, record_flagged_reason
 from helper_functions.utility import check_password
 
 
@@ -622,38 +622,8 @@ if uploaded_a and uploaded_b:
                         matched_edit = details[details["status"] == "Matched"][[
                             "identifier", "total_amount_a", "total_amount_b", "difference"
                         ]].copy()
-                        matched_with_edits = apply_reason_edits(details[details["status"] == "Matched"], "suggested_reason")
-                        matched_edit["Reason"] = matched_with_edits["suggested_reason"].fillna("").values
-                        readonly_cols_matched = [c for c in matched_edit.columns if c != "Reason"]
-                        edited_matched = st.data_editor(
-                            matched_edit,
-                            disabled=readonly_cols_matched,
-                            use_container_width=True,
-                            key=f"matched_editor_{selected_key}",
-                            column_config={
-                                "Reason": st.column_config.TextColumn(
-                                    "Reason",
-                                    help="Add notes or reasons for matched items, then click Save to train the AI.",
-                                )
-                            },
-                        )
-                        # Update session state with edits from this tab
-                        for _, row in edited_matched.iterrows():
-                            identifier = str(row["identifier"])
-                            reason = str(row["Reason"]).strip()
-                            if reason:
-                                st.session_state[reason_edits_key][identifier] = reason
-                        if st.button("Save reasons to knowledge base", key=f"save_reasons_matched_{selected_key}"):
-                            reasons_to_save = {
-                                str(row["identifier"]): str(row["Reason"]).strip()
-                                for _, row in edited_matched.iterrows()
-                                if str(row["Reason"]).strip()
-                            }
-                            if reasons_to_save:
-                                record_user_reasons(field_a, field_b, reasons_to_save)
-                                st.success(f"Saved {len(reasons_to_save)} reason(s) to knowledge base.")
-                            else:
-                                st.info("No reasons entered to save.")
+                        readonly_cols_matched = list(matched_edit.columns)
+                        st.dataframe(matched_edit, use_container_width=True)
                     with unmatched_tab:
                         st.markdown(f"### Unmatched rows ({unmatched_count})")
                         st.markdown(
@@ -665,8 +635,9 @@ if uploaded_a and uploaded_b:
                         ].copy()
                         unmatched_with_edits = apply_reason_edits(details[details["status"] != "Matched"], "suggested_reason")
                         unmatched_edit["Reason"] = unmatched_with_edits["suggested_reason"].values
-                        unmatched_edit.insert(0, "Select", False)  # Add checkbox column at the beginning
-                        readonly_cols = [c for c in unmatched_edit.columns if c not in ["Reason", "Select"]]
+                        unmatched_edit.insert(0, "Select", False)
+                        unmatched_edit["Flag reason as wrong"] = False
+                        readonly_cols = [c for c in unmatched_edit.columns if c not in ["Reason", "Select", "Flag reason as wrong"]]
                         edited_unmatched = st.data_editor(
                             unmatched_edit,
                             disabled=readonly_cols,
@@ -681,7 +652,12 @@ if uploaded_a and uploaded_b:
                                 "Reason": st.column_config.TextColumn(
                                     "Reason",
                                     help="LLM-suggested reason. Edit to correct it, then click Save to train the AI for future runs on this identifier pair.",
-                                )
+                                ),
+                                "Flag reason as wrong": st.column_config.CheckboxColumn(
+                                    "Flag reason as wrong",
+                                    help="Check to flag this reason as incorrect. Flagged reasons will be deprioritised by the AI in future runs.",
+                                    width="small",
+                                ),
                             },
                         )
                         # Update session state with edits from this tab
@@ -701,6 +677,14 @@ if uploaded_a and uploaded_b:
                                 st.success(f"Saved {len(reasons_to_save)} reason(s) to knowledge base.")
                             else:
                                 st.info("No reasons entered to save.")
+                            # Record flagged reasons
+                            flagged_count = 0
+                            for _, row in edited_unmatched.iterrows():
+                                if row.get("Flag reason as wrong") and str(row["Reason"]).strip():
+                                    record_flagged_reason(str(row["Reason"]).strip())
+                                    flagged_count += 1
+                            if flagged_count:
+                                st.warning(f"Flagged {flagged_count} reason(s) as wrong — the AI will avoid these in future runs.")
                         
                         # Filter Source A/B rows based on selected checkboxes
                         selected_identifiers = edited_unmatched[edited_unmatched["Select"]]["identifier"].astype(str).tolist()

@@ -142,3 +142,33 @@ def get_user_reason_context(field_a: str, field_b: str, max_examples: int = 15) 
         f"— use these as labelled examples to infer the pattern and apply it to new rows:\n"
         + "\n".join(lines)
     )
+
+
+def record_flagged_reason(reason: str) -> None:
+    """Increment the flag count for a reason marked as wrong by the user."""
+    reason = reason.strip()
+    if not reason:
+        return
+    kb = load_kb()
+    flagged = kb.setdefault("flagged_reasons", {})
+    flagged[reason] = flagged.get(reason, 0) + 1
+    save_kb(kb)
+
+
+def get_flagged_reason_context() -> str:
+    """Return a prompt hint listing reasons flagged as wrong by users.
+
+    The more times a reason has been flagged, the stronger the instruction to avoid it.
+    """
+    kb = load_kb()
+    flagged = kb.get("flagged_reasons", {})
+    if not flagged:
+        return ""
+    # Sort by flag count descending so most-flagged appear first
+    top = sorted(flagged.items(), key=lambda x: x[1], reverse=True)[:10]
+    lines = [f"  - {r!r} (flagged {c} time(s) as incorrect)" for r, c in top]
+    return (
+        "The following reason labels have been flagged as WRONG by users — "
+        "avoid using them unless there is very strong evidence:\n"
+        + "\n".join(lines)
+    )

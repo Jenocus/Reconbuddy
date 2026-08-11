@@ -25,11 +25,13 @@ kb = load_kb()
 pairings = kb.get("pairings", [])
 mismatch_reasons = kb.get("mismatch_reasons", {})
 user_reasons = kb.get("user_reasons", [])
+flagged_reasons = kb.get("flagged_reasons", {})
 
-col1, col2, col3 = st.columns(3)
+col1, col2, col3, col4 = st.columns(4)
 col1.metric("Confirmed pairings", len(pairings))
 col2.metric("Unique mismatch reasons", len(mismatch_reasons))
 col3.metric("User-confirmed examples", len(user_reasons))
+col4.metric("Flagged (wrong) reasons", len(flagged_reasons))
 
 st.write("---")
 
@@ -212,11 +214,49 @@ with col_imp:
 
 st.write("---")
 
-# ── 5. Danger zone ─────────────────────────────────────────────────────────────
-st.subheader("5. Danger zone")
+# ── 5. Flagged reasons ─────────────────────────────────────────────────────────
+st.subheader("5. Flagged reasons (negative feedback)")
+st.caption(
+    "Reasons flagged as wrong by users. The LLM is instructed to avoid these. "
+    "Higher flag count = stronger avoidance signal. Remove entries to lift the restriction."
+)
+
+flagged_reasons = kb.get("flagged_reasons", {})
+if flagged_reasons:
+    flagged_df = (
+        pd.DataFrame(list(flagged_reasons.items()), columns=["reason", "flag_count"])
+        .sort_values("flag_count", ascending=False)
+        .reset_index(drop=True)
+    )
+    edited_flagged = st.data_editor(
+        flagged_df,
+        use_container_width=True,
+        num_rows="dynamic",
+        key="flagged_reasons_editor",
+    )
+    col_save_f, col_clear_f = st.columns([1, 1])
+    with col_save_f:
+        if st.button("Save flagged reason changes", key="save_flagged"):
+            kb["flagged_reasons"] = dict(zip(edited_flagged["reason"], edited_flagged["flag_count"]))
+            save_kb(kb)
+            st.success("Flagged reasons saved.")
+            st.rerun()
+    with col_clear_f:
+        if st.button("Clear all flagged reasons", key="clear_flagged", type="secondary"):
+            kb["flagged_reasons"] = {}
+            save_kb(kb)
+            st.success("All flagged reasons cleared.")
+            st.rerun()
+else:
+    st.info("No reasons have been flagged yet. Use the 'Flag reason as wrong' checkbox in the 2-way Match page.")
+
+st.write("---")
+
+# ── 6. Danger zone ─────────────────────────────────────────────────────────────
+st.subheader("6. Danger zone")
 with st.expander("Reset entire knowledge base"):
-    st.warning("This will permanently delete all learned pairings, reasons, and user examples.")
+    st.warning("This will permanently delete all learned pairings, reasons, user examples, and flagged reasons.")
     if st.button("Reset knowledge base", type="primary", key="reset_kb"):
-        save_kb({"pairings": [], "mismatch_reasons": {}, "user_reasons": []})
+        save_kb({"pairings": [], "mismatch_reasons": {}, "user_reasons": [], "flagged_reasons": {}})
         st.success("Knowledge base has been reset.")
         st.rerun()

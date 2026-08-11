@@ -9,7 +9,7 @@ import streamlit as st
 from PyPDF2 import PdfReader
 
 from helper_functions.llm import get_completion
-from helper_functions.knowledge_base import get_pairing_context, get_mismatch_reason_context, get_user_reason_context
+from helper_functions.knowledge_base import get_pairing_context, get_mismatch_reason_context, get_user_reason_context, get_flagged_reason_context
 
 
 def parse_pdf(file) -> str:
@@ -261,6 +261,7 @@ def infer_unmatched_reasons(
     
     reason_hint = get_mismatch_reason_context()
     user_reason_hint = get_user_reason_context(identifier_field_a, identifier_field_b) if identifier_field_a and identifier_field_b else ""
+    flagged_reason_hint = get_flagged_reason_context()
     
     # Build prompt without timing difference (already handled)
     priority_text = (
@@ -277,6 +278,7 @@ def infer_unmatched_reasons(
         "For each row assign exactly one reason label. Follow this priority order:\n"
         + priority_text
         + "Do not use 'missing invoice' or 'timing difference' as a reason (those are pre-detected). "
+        + (f"{flagged_reason_hint}\n" if flagged_reason_hint else "")
         + (f"{user_reason_hint}\n" if user_reason_hint else "")
         + (f"{reason_hint}\n" if reason_hint else "")
         + "Respond only with valid JSON in this format: [\n"

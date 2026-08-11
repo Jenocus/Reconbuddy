@@ -104,9 +104,9 @@ st.table(
             "Frozen headers and sorting improve usability for large result sets; matches analyst expectations from Excel-like interfaces.",
             "Date-based logic is deterministic and fast; ensures timing mismatches are never false-negatives. LLM is instructed to prioritize it for edge cases.",
             "Sensitive data never leaves the workspace. knowledge_base.json stores only anonymized patterns (field pairs and reason labels), not transaction data.",
-            "54 tests verify KB persistence, LLM prompt injection, timing detection logic, and end-to-end learning across sessions.",
+            "Tests are like checkpoints that verify the app works correctly. We test that learning is saved, reasons are suggested properly, and timing differences are detected. If something breaks, tests catch it immediately.",
             "Cost-effective and sufficient for structured data reasoning; supports JSON parsing and conditional logic required by reconciliation.",
-            "Cache is invalidated only when KB changes (flagged or confirmed reasons), avoiding stale results while reducing API calls.",
+            "The app remembers what it learned so it doesn't think about the same pair twice. When learning changes (new flagged or confirmed reasons), it forgets the old memory and learns fresh—avoiding old mistakes.",
         ],
     }
 )

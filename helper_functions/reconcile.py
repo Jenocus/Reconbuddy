@@ -218,78 +218,65 @@ def infer_unmatched_reasons(
             if any(term in col.lower() for term in ["date", "time", "timestamp", "posted", "period"]) and col not in date_cols:
                 date_cols.append(col)
 
-    # Analyze matched rows' date ranges to detect timing differences
-    timing_difference_hints = {}
+    output = {}
+
+    # Pre-process: detect timing differences by comparing to matched date range
     if matched_df is not None and not matched_df.empty and date_cols:
         for date_col in date_cols:
-            if date_col in matched_df.columns:
+            if date_col in matched_df.columns and date_col in unmatched_df.columns:
                 try:
-                    # Parse dates from matched rows
+                    # Get date range from matched rows
                     matched_dates = pd.to_datetime(matched_df[date_col], errors="coerce").dropna()
                     if not matched_dates.empty:
                         matched_min = matched_dates.min()
                         matched_max = matched_dates.max()
-                        matched_month = f"{matched_min.year}-{matched_min.month:02d}"
                         
                         # Check unmatched rows against matched period
-                        if date_col in unmatched_df.columns:
-                            unmatched_dates = pd.to_datetime(unmatched_df[date_col], errors="coerce")
-                            for idx, unmatched_date in unmatched_dates.items():
-                                if pd.notna(unmatched_date):
-                                    if unmatched_date < matched_min or unmatched_date > matched_max:
-                                        identifier = unmatched_df.loc[idx, "identifier"]
-                                        timing_difference_hints[str(identifier)] = True
+                        unmatched_dates = pd.to_datetime(unmatched_df[date_col], errors="coerce")
+                        for idx, row in unmatched_df.iterrows():
+                            unmatched_date = unmatched_dates.loc[idx]
+                            if pd.notna(unmatched_date):
+                                # If date is outside matched period, mark as timing difference
+                                if unmatched_date < matched_min or unmatched_date > matched_max:
+                                    identifier = str(row["identifier"])
+                                    output[identifier] = "timing difference"
                 except Exception:
                     pass
 
+    # For remaining unmatched rows without timing difference label, use LLM
+    remaining_unmatched = unmatched_df[~unmatched_df["identifier"].astype(str).isin(output.keys())].copy()
+    
+    if remaining_unmatched.empty:
+        return output
+
     # Build sample with key columns plus any date columns that exist
     sample_cols = ["identifier", "total_amount_a", "total_amount_b"]
-    available_cols = [c for c in sample_cols if c in unmatched_df.columns]
+    available_cols = [c for c in sample_cols if c in remaining_unmatched.columns]
     for date_col in date_cols:
-        if date_col in unmatched_df.columns:
+        if date_col in remaining_unmatched.columns:
             available_cols.append(date_col)
 
-    sample = unmatched_df.head(max_rows)[available_cols].fillna("")
-    
-    # Add timing difference indicator to sample
-    if timing_difference_hints:
-        sample = sample.copy()
-        sample["_is_timing_diff"] = sample["identifier"].astype(str).map(
-            lambda x: "[TIMING DIFFERENCE - outside matched period]" if timing_difference_hints.get(x) else ""
-        )
-
+    sample = remaining_unmatched.head(max_rows)[available_cols].fillna("")
     rows = sample.to_dict(orient="records")
+    
     reason_hint = get_mismatch_reason_context()
     user_reason_hint = get_user_reason_context(identifier_field_a, identifier_field_b) if identifier_field_a and identifier_field_b else ""
     
-    # Build prompt with priority order based on whether date columns are present
-    if date_cols:
-        priority_text = (
-            "1. TIMING DIFFERENCE (highest priority): if the row is marked '[TIMING DIFFERENCE - outside matched period]', "
-            "this means the transaction date falls outside the date range of matched transactions, indicating a timing difference. "
-            "Label it 'timing difference'.\n"
-            "2. PERIOD MISMATCH: amounts exist on both sides but belong to different reporting periods.\n"
-            "3. SETTLEMENT DELAY: payment has been initiated but not yet settled.\n"
-            "4. DUPLICATE POSTING: the same transaction appears more than once in one source.\n"
-            "5. CURRENCY VARIATION: exchange rate or currency conversion difference.\n"
-            "6. FEES: bank or processing fees not captured in the other source.\n"
-            "7. DATA EXTRACTION MISMATCH: field parsing or export error.\n"
-        )
-    else:
-        priority_text = (
-            "1. DUPLICATE POSTING (highest priority): the same transaction appears more than once in one source.\n"
-            "2. SETTLEMENT DELAY: payment has been initiated but not yet settled.\n"
-            "3. CURRENCY VARIATION: exchange rate or currency conversion difference.\n"
-            "4. FEES: bank or processing fees not captured in the other source.\n"
-            "5. DATA EXTRACTION MISMATCH: field parsing or export error.\n"
-            "6. PERIOD MISMATCH: amounts may belong to different reporting periods.\n"
-        )
+    # Build prompt without timing difference (already handled)
+    priority_text = (
+        "1. DUPLICATE POSTING (highest priority): the same transaction appears more than once in one source.\n"
+        "2. SETTLEMENT DELAY: payment has been initiated but not yet settled.\n"
+        "3. CURRENCY VARIATION: exchange rate or currency conversion difference.\n"
+        "4. FEES: bank or processing fees not captured in the other source.\n"
+        "5. PERIOD MISMATCH: amounts may belong to different reporting periods.\n"
+        "6. DATA EXTRACTION MISMATCH: field parsing or export error.\n"
+    )
     
     prompt = (
         "You are a financial reconciliation analyst. Review the following unmatched reconciliation rows from two sources. "
         "For each row assign exactly one reason label. Follow this priority order:\n"
         + priority_text
-        + "Do not use 'missing invoice' as a reason. "
+        + "Do not use 'missing invoice' or 'timing difference' as a reason (those are pre-detected). "
         + (f"{user_reason_hint}\n" if user_reason_hint else "")
         + (f"{reason_hint}\n" if reason_hint else "")
         + "Respond only with valid JSON in this format: [\n"
@@ -305,15 +292,13 @@ def infer_unmatched_reasons(
     ], temperature=0)
 
     suggestions = parse_json_response(response_text)
-    if not isinstance(suggestions, list):
-        return {}
-
-    output = {}
-    for item in suggestions:
-        identifier = item.get("identifier")
-        reason = item.get("suggested_reason")
-        if identifier is not None and reason is not None:
-            output[str(identifier)] = str(reason)
+    if isinstance(suggestions, list):
+        for item in suggestions:
+            identifier = item.get("identifier")
+            reason = item.get("suggested_reason")
+            if identifier is not None and reason is not None:
+                output[str(identifier)] = str(reason)
+    
     return output
 
 

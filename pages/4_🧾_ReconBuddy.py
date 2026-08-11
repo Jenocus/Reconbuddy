@@ -489,10 +489,18 @@ if uploaded_a and uploaded_b:
                     reason_counts = unmatched["reason"].value_counts().rename_axis("reason").reset_index(name="count")
                     top_reasons = reason_counts.head(3)["reason"].tolist()
 
-                    # Persist confirmed pairing and mismatch reasons to the knowledge base
+                    # Persist confirmed pairing and LLM-suggested semantic reasons to the knowledge base.
+                    # Use suggested_reason (LLM output) — NOT the structural "reason" column which only
+                    # contains labels like "Missing on source A" / "Mismatch" and would corrupt the KB hint.
                     record_confirmed_pairing(selected["source_a_field"], selected["source_b_field"])
-                    if not reason_counts.empty:
-                        record_mismatch_reasons(dict(zip(reason_counts["reason"], reason_counts["count"])))
+                    suggested_reason_counts = (
+                        details[details["suggested_reason"].str.strip() != ""]["suggested_reason"]
+                        .value_counts()
+                        .rename_axis("reason")
+                        .reset_index(name="count")
+                    )
+                    if not suggested_reason_counts.empty:
+                        record_mismatch_reasons(dict(zip(suggested_reason_counts["reason"], suggested_reason_counts["count"])))
 
                     summary_text = summarize_reconciliation_insights(
                         source_a,

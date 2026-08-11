@@ -356,11 +356,16 @@ if uploaded_a and uploaded_b:
                     amount_b_index = amount_fields_b.index(default_b) if default_b in amount_fields_b else 0
                     amount_b = st.selectbox("Select amount field in Source B", amount_fields_b, index=amount_b_index)
 
-                # Compute a hash of KB state so we can detect when KB changes
+                # Compute a hash of only the KB sections that affect LLM output
+                # (mismatch_reasons changes every run so is excluded)
                 import hashlib, json as _json
                 _kb_snapshot = load_kb()
+                _kb_for_hash = {
+                    "flagged_reasons": _kb_snapshot.get("flagged_reasons", {}),
+                    "user_reasons": _kb_snapshot.get("user_reasons", []),
+                }
                 _current_kb_hash = hashlib.md5(
-                    _json.dumps(_kb_snapshot, sort_keys=True).encode()
+                    _json.dumps(_kb_for_hash, sort_keys=True).encode()
                 ).hexdigest()
 
                 # Warn (but do NOT clear results) if KB has changed since last run

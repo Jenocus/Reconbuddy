@@ -2,6 +2,7 @@
   "pairings": [],
   "mismatch_reasons": {},
   "flagged_reasons": {
-    "duplicate posting": 1
+    "duplicate posting": 1,
+    "settlement delay": 1
   }
 }

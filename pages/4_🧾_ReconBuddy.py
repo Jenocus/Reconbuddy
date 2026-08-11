@@ -563,6 +563,20 @@ if uploaded_a and uploaded_b:
                     ).properties(height=300)
                     st.altair_chart(exposure_chart, use_container_width=True)
 
+                    # Initialize shared reason edits tracking across all tabs
+                    reason_edits_key = f"reason_edits_{selected_key}"
+                    if reason_edits_key not in st.session_state:
+                        st.session_state[reason_edits_key] = {}
+
+                    def apply_reason_edits(df, reason_column_name="suggested_reason"):
+                        """Apply tracked edits from session_state to the dataframe"""
+                        df = df.copy()
+                        for identifier, edited_reason in st.session_state[reason_edits_key].items():
+                            mask = df["identifier"].astype(str) == str(identifier)
+                            if mask.any():
+                                df.loc[mask, reason_column_name] = edited_reason
+                        return df
+
                     all_tab, matched_tab, unmatched_tab = st.tabs([
                         "All",
                         f"Matched ({matched_count})",
@@ -572,7 +586,7 @@ if uploaded_a and uploaded_b:
                         all_edit = details[[
                             "identifier", "total_amount_a", "total_amount_b", "difference", "status"
                         ]].copy()
-                        all_edit["Reason"] = details["suggested_reason"].fillna("")
+                        all_edit["Reason"] = apply_reason_edits(details, "suggested_reason")["suggested_reason"].fillna("")
                         readonly_cols_all = [c for c in all_edit.columns if c != "Reason"]
                         edited_all = st.data_editor(
                             all_edit,
@@ -586,6 +600,12 @@ if uploaded_a and uploaded_b:
                                 )
                             },
                         )
+                        # Update session state with edits from this tab
+                        for _, row in edited_all.iterrows():
+                            identifier = str(row["identifier"])
+                            reason = str(row["Reason"]).strip()
+                            if reason:
+                                st.session_state[reason_edits_key][identifier] = reason
                         if st.button("Save reasons to knowledge base", key=f"save_reasons_all_{selected_key}"):
                             reasons_to_save = {
                                 str(row["identifier"]): str(row["Reason"]).strip()
@@ -601,7 +621,8 @@ if uploaded_a and uploaded_b:
                         matched_edit = details[details["status"] == "Matched"][[
                             "identifier", "total_amount_a", "total_amount_b", "difference"
                         ]].copy()
-                        matched_edit["Reason"] = details.loc[details["status"] == "Matched", "suggested_reason"].fillna("").values
+                        matched_with_edits = apply_reason_edits(details[details["status"] == "Matched"], "suggested_reason")
+                        matched_edit["Reason"] = matched_with_edits["suggested_reason"].fillna("").values
                         readonly_cols_matched = [c for c in matched_edit.columns if c != "Reason"]
                         edited_matched = st.data_editor(
                             matched_edit,
@@ -615,6 +636,12 @@ if uploaded_a and uploaded_b:
                                 )
                             },
                         )
+                        # Update session state with edits from this tab
+                        for _, row in edited_matched.iterrows():
+                            identifier = str(row["identifier"])
+                            reason = str(row["Reason"]).strip()
+                            if reason:
+                                st.session_state[reason_edits_key][identifier] = reason
                         if st.button("Save reasons to knowledge base", key=f"save_reasons_matched_{selected_key}"):
                             reasons_to_save = {
                                 str(row["identifier"]): str(row["Reason"]).strip()
@@ -635,7 +662,8 @@ if uploaded_a and uploaded_b:
                         unmatched_edit = details[details["status"] != "Matched"][
                             ["identifier", "total_amount_a", "total_amount_b", "difference"]
                         ].copy()
-                        unmatched_edit["Reason"] = details.loc[details["status"] != "Matched", "suggested_reason"].values
+                        unmatched_with_edits = apply_reason_edits(details[details["status"] != "Matched"], "suggested_reason")
+                        unmatched_edit["Reason"] = unmatched_with_edits["suggested_reason"].values
                         readonly_cols = [c for c in unmatched_edit.columns if c != "Reason"]
                         edited_unmatched = st.data_editor(
                             unmatched_edit,
@@ -649,6 +677,12 @@ if uploaded_a and uploaded_b:
                                 )
                             },
                         )
+                        # Update session state with edits from this tab
+                        for _, row in edited_unmatched.iterrows():
+                            identifier = str(row["identifier"])
+                            reason = str(row["Reason"]).strip()
+                            if reason:
+                                st.session_state[reason_edits_key][identifier] = reason
                         if st.button("Save reasons to knowledge base", key=f"save_reasons_{selected_key}"):
                             reasons_to_save = {
                                 str(row["identifier"]): str(row["Reason"]).strip()

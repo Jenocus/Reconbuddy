@@ -18,14 +18,14 @@ st.write(
 st.subheader("End-to-end data flow")
 st.markdown(
     "1. Upload one or more source files in PDF, Excel, or CSV format.\n"
-    "2. Parse the documents and extract tables or text.\n"
+    "2. Parse documents and extract tables or text.\n"
     "3. Normalize headers and detect likely amount fields.\n"
-    "4. Use LLM-based analysis to suggest shared identifiers and field mappings.\n"
-    "5. Reconcile totals by identifier; detect timing differences by comparing dates to matched period.\n"
-    "6. Review unmatched rows with LLM-suggested reasons; edit reasons across tabs (All, Matched, Unmatched).\n"
-    "7. Save user-corrected reasons to knowledge base for learning.\n"
-    "8. Ask questions about sources via LLM chatbox (reads uploaded data and reconciliation metrics).\n"
-    "9. Export reconciliation report and use learned patterns for future reconciliations."
+    "4. Use LLM to suggest shared identifiers and field mappings.\n"
+    "5. Reconcile totals by identifier; pre-detect timing differences via date ranges.\n"
+    "6. Review matched and unmatched rows in sortable, frozen-header tables.\n"
+    "7. Rate each reason inline: 👍 (confirm, saves as positive example) or 👎 (flag as wrong, banned from future runs).\n"
+    "8. Review and manage feedback in Admin panel (field pairings, confirmed examples, flagged reasons).\n"
+    "9. Ask questions via LLM chatbox; export results; next reconciliation uses updated knowledge base patterns."
 )
 
 st.subheader("Implementation detail")
@@ -69,16 +69,18 @@ st.caption("This methodology is intentionally transparent so analysts can inspec
 
 st.subheader("Knowledge base for learning")
 st.write(
-    "Reconbuddy maintains a knowledge base (knowledge_base.json) that learns from user corrections across sessions. When you edit a mismatch reason and save it, the system records: "
-    "(1) which field pair was reconciled, (2) the reason you confirmed, and (3) the specific identifier. "
-    "On future reconciliations with the same field pair, the LLM receives these user-confirmed examples as hints, improving suggestions over time."
+    "Reconbuddy learns from user feedback via a local knowledge base (knowledge_base.json). When you interact with reasons: "
+    "👍 saves that reason as a confirmed example for the field pair (LLM uses as positive hint). "
+    "👎 flags the reason as wrong and bans it—the LLM will never suggest it again. "
+    "On future reconciliations with the same field pair, the LLM receives confirmed examples and the list of banned reasons, improving quality incrementally without external data sharing."
 )
 
 st.subheader("Timing difference detection")
 st.write(
-    "Timing differences are automatically detected by comparing transaction dates. The system analyzes the date range of all matched rows (e.g., Jan 1-31), "
-    "then flags any unmatched row with a date outside that period as a timing difference. This is the highest-priority unmatched reason and ensures transactions "
-    "that belong in a different reporting period are not misclassified as missing or duplicated."
+    "Timing differences are the **highest-priority** unmatched reason. Detection happens in two stages: "
+    "(1) Code-based: the system analyzes the date range of matched rows (e.g., Jan 1–31), then pre-flags unmatched rows with dates outside that period. "
+    "(2) LLM-based: for rows without date evidence, the LLM is instructed to consider timing difference first when inferring reasons. "
+    "This dual approach ensures timing mismatches are never confused with missing or duplicated transactions."
 )
 
 st.subheader("Key design choices")
@@ -86,25 +88,25 @@ st.table(
     {
         "Decision": [
             "Direct LLM prompting instead of RAG",
-            "Knowledge base (JSON) for learning, not a vector store",
-            "Session state for cross-tab reason sync",
-            "No external database (knowledge base stored locally as JSON)",
-            "Timing difference detected in code, not via LLM",
-            "LLM used for field mapping and secondary reasons",
-            "Full document data sent to chatbox",
-            "GPT-4o-mini as the LLM",
-            "Streamlit session state for caching",
+            "JSON knowledge base with positive and negative feedback",
+            "Inline 👍/👎 per row; no batch dialogs",
+            "Frozen-header, sortable tables (Streamlit dataframe)",
+            "Timing difference: code-detected first, then LLM as priority #1",
+            "Local knowledge base; no external data sharing",
+            "Comprehensive test suite (54 tests)",
+            "GPT-4o-mini for reconciliation and chatbox",
+            "Session-state caching with KB hash invalidation",
         ],
         "Reason": [
-            "Reconciliation inputs are small structured tables that fit within a single prompt window; retrieval overhead is unnecessary.",
-            "Users build patterns over time by confirming reasons for the same field pairs. A simple JSON KB stores examples and aggregates; no vector embeddings needed.",
-            "When a user edits a reason in one tab (All, Matched, or Unmatched), session state tracks it so other tabs display the same edit immediately.",
-            "No external database is used. Reconciliation session data is not retained after the session ends. User-confirmed mismatch reasons are stored locally in knowledge_base.json, which improves LLM suggestions over time without sending data to an external service.",
-            "Date-based logic is deterministic and fast; letting the LLM guess leads to false negatives. Pre-detecting timing differences ensures they are never misclassified.",
-            "Column names often differ across systems (e.g. 'InvNum' vs 'invoice_id'). An LLM interprets intent better than brittle keyword rules. For timing differences, detection is deterministic.",
-            "The chatbox LLM needs access to uploaded data samples and reconciliation metrics to answer questions accurately (e.g., 'Why are amounts different?').",
-            "Balances cost, speed, and reasoning quality for structured data interpretation tasks.",
-            "LLM analysis for the same pair of sources is deterministic enough to cache within a session, avoiding redundant API calls when the user revisits settings.",
+            "Reconciliation inputs are small structured tables; retrieval overhead is unnecessary.",
+            "User feedback directly tunes LLM behavior: 👍 adds positive examples, 👎 creates hard bans. Simple, fast, transparent.",
+            "Per-row feedback is immediate and low-friction. Users rate reasons as they review them without extra form dialogs.",
+            "Frozen headers and sorting improve usability for large result sets; matches analyst expectations from Excel-like interfaces.",
+            "Date-based logic is deterministic and fast; ensures timing mismatches are never false-negatives. LLM is instructed to prioritize it for edge cases.",
+            "Sensitive data never leaves the workspace. knowledge_base.json stores only anonymized patterns (field pairs and reason labels), not transaction data.",
+            "54 tests verify KB persistence, LLM prompt injection, timing detection logic, and end-to-end learning across sessions.",
+            "Cost-effective and sufficient for structured data reasoning; supports JSON parsing and conditional logic required by reconciliation.",
+            "Cache is invalidated only when KB changes (flagged or confirmed reasons), avoiding stale results while reducing API calls.",
         ],
     }
 )

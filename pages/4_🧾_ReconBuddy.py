@@ -694,10 +694,28 @@ if uploaded_a and uploaded_b:
                                 st.success(f"Saved {len(reasons_to_save)} reason(s) to knowledge base.")
                             else:
                                 st.info("No reasons entered to save.")
+                        
+                        # Row selection for highlighting
+                        available_identifiers = edited_unmatched["identifier"].astype(str).unique().tolist()
+                        selected_identifier = st.selectbox(
+                            "Select an identifier to highlight corresponding rows",
+                            options=["(All rows)"] + sorted(available_identifiers),
+                            key=f"unmatched_select_{selected_key}",
+                            index=0,
+                        )
+                        
+                        # Filter and display Source A/B rows based on selection
+                        if selected_identifier != "(All rows)":
+                            filtered_a = unmatched_a_rows[unmatched_a_rows[selected["source_a_field"]].astype(str) == selected_identifier]
+                            filtered_b = unmatched_b_rows[unmatched_b_rows[selected["source_b_field"]].astype(str) == selected_identifier]
+                        else:
+                            filtered_a = unmatched_a_rows
+                            filtered_b = unmatched_b_rows
+                        
                         st.markdown(f"**Unmatched rows from Source A (total {unmatched_total_a:,.2f})**")
-                        st.dataframe(format_dataframe_numbers(unmatched_a_rows))
+                        st.dataframe(format_dataframe_numbers(filtered_a))
                         st.markdown(f"**Unmatched rows from Source B (total {unmatched_total_b:,.2f})**")
-                        st.dataframe(format_dataframe_numbers(unmatched_b_rows))
+                        st.dataframe(format_dataframe_numbers(filtered_b))
 
                     st.write("---")
                     st.subheader("Executive Summary")

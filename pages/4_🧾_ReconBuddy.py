@@ -765,18 +765,22 @@ if uploaded_a and uploaded_b:
                         # Add user message to history
                         st.session_state[chat_key].append({"role": "user", "content": user_question})
                         
-                        # Build context about sources
+                        # Build comprehensive context about sources including data samples
                         source_context = (
                             f"Source A: {_rr['source_a_name']}\n"
                             f"- Total rows: {_rr['source_a_len']:,}\n"
                             f"- Total amount: {totals['Total A']:,.2f}\n"
                             f"- Matched amount: {matched_amount_a:,.2f}\n"
-                            f"- Unmatched amount: {unmatched_total_a:,.2f}\n\n"
+                            f"- Unmatched amount: {unmatched_total_a:,.2f}\n"
+                            f"- Fields: {list(source_a['dataframe'].columns)}\n\n"
+                            f"Source A Sample Data (first 10 rows):\n{source_a['dataframe'].head(10).to_string()}\n\n"
                             f"Source B: {_rr['source_b_name']}\n"
                             f"- Total rows: {_rr['source_b_len']:,}\n"
                             f"- Total amount: {totals['Total B']:,.2f}\n"
                             f"- Matched amount: {matched_amount_b:,.2f}\n"
-                            f"- Unmatched amount: {unmatched_total_b:,.2f}\n\n"
+                            f"- Unmatched amount: {unmatched_total_b:,.2f}\n"
+                            f"- Fields: {list(source_b['dataframe'].columns)}\n\n"
+                            f"Source B Sample Data (first 10 rows):\n{source_b['dataframe'].head(10).to_string()}\n\n"
                             f"Reconciliation Results:\n"
                             f"- Matched identifiers: {matched_count:,}\n"
                             f"- Unmatched identifiers: {unmatched_count:,}\n"
@@ -793,8 +797,8 @@ if uploaded_a and uploaded_b:
                         from helper_functions.llm import get_completion
                         
                         response = get_completion([
-                            {"role": "system", "content": "You are a helpful financial reconciliation analyst. Answer questions about the two sources and reconciliation results based on the provided data."},
-                            {"role": "user", "content": f"Here is the reconciliation data:\n\n{source_context}\n\nUser question: {user_question}"},
+                            {"role": "system", "content": "You are a helpful financial reconciliation analyst. Answer questions about the two sources and reconciliation results based on the provided data. Analyze the uploaded documents and data to provide accurate insights."},
+                            {"role": "user", "content": f"Here is the reconciliation data and source documents:\n\n{source_context}\n\nUser question: {user_question}"},
                         ], temperature=0)
                         
                         # Add assistant response to history

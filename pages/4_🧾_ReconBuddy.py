@@ -16,7 +16,7 @@ from helper_functions.reconcile import (
     summarize_reconciliation_insights,
     _infer_decimal_precision,
 )
-from helper_functions.knowledge_base import record_confirmed_pairing, record_mismatch_reasons
+from helper_functions.knowledge_base import record_confirmed_pairing, record_mismatch_reasons, record_user_reasons
 from helper_functions.utility import check_password
 
 
@@ -446,6 +446,8 @@ if uploaded_a and uploaded_b:
                         source_b["name"],
                         amount_a,
                         amount_b,
+                        identifier_field_a=selected["source_a_field"],
+                        identifier_field_b=selected["source_b_field"],
                     )
                     details["suggested_reason"] = details["identifier"].astype(str).map(suggestion_map).fillna("")
                     details_styled = format_dataframe_numbers(details)
@@ -558,7 +560,36 @@ if uploaded_a and uploaded_b:
                             f"**Unmatched total in Source A:** {unmatched_total_a:,.2f}  \
                             **Unmatched total in Source B:** {unmatched_total_b:,.2f}"
                         )
-                        st.dataframe(format_dataframe_numbers(details[details["status"] != "Matched"]))
+                        unmatched_edit = details[details["status"] != "Matched"].copy()
+                        unmatched_edit["Your reason"] = unmatched_edit["suggested_reason"]
+                        readonly_cols = [c for c in unmatched_edit.columns if c != "Your reason"]
+                        edited_unmatched = st.data_editor(
+                            unmatched_edit,
+                            disabled=readonly_cols,
+                            use_container_width=True,
+                            key=f"unmatched_editor_{selected_key}",
+                            column_config={
+                                "Your reason": st.column_config.TextColumn(
+                                    "Your reason",
+                                    help="Correct or confirm the mismatch reason. Saved reasons will be used to train the AI for future runs on this identifier pair.",
+                                )
+                            },
+                        )
+                        if st.button("Save reasons to knowledge base", key=f"save_reasons_{selected_key}"):
+                            reasons_to_save = {
+                                str(row["identifier"]): str(row["Your reason"]).strip()
+                                for _, row in edited_unmatched.iterrows()
+                                if str(row["Your reason"]).strip()
+                            }
+                            if reasons_to_save:
+                                record_user_reasons(
+                                    selected["source_a_field"],
+                                    selected["source_b_field"],
+                                    reasons_to_save,
+                                )
+                                st.success(f"Saved {len(reasons_to_save)} reason(s) to knowledge base.")
+                            else:
+                                st.info("No reasons entered to save.")
                         st.markdown(f"**Unmatched rows from Source A (total {unmatched_total_a:,.2f})**")
                         st.dataframe(format_dataframe_numbers(unmatched_a_rows))
                         st.markdown(f"**Unmatched rows from Source B (total {unmatched_total_b:,.2f})**")

@@ -9,7 +9,7 @@ import streamlit as st
 from PyPDF2 import PdfReader
 
 from helper_functions.llm import get_completion
-from helper_functions.knowledge_base import get_pairing_context, get_mismatch_reason_context
+from helper_functions.knowledge_base import get_pairing_context, get_mismatch_reason_context, get_user_reason_context
 
 
 def parse_pdf(file) -> str:
@@ -197,6 +197,8 @@ def infer_unmatched_reasons(
     source_b_name: str,
     amount_field_a: str,
     amount_field_b: str,
+    identifier_field_a: str = "",
+    identifier_field_b: str = "",
     max_rows: int = 20,
 ):
     if unmatched_df is None or unmatched_df.empty:
@@ -212,6 +214,7 @@ def infer_unmatched_reasons(
 
     rows = sample.to_dict(orient="records")
     reason_hint = get_mismatch_reason_context()
+    user_reason_hint = get_user_reason_context(identifier_field_a, identifier_field_b) if identifier_field_a and identifier_field_b else ""
     prompt = (
         "You are a financial reconciliation analyst. Review the following unmatched reconciliation rows from two sources. "
         "For each row, infer the most likely reason the amounts do not align, focusing on timing and period differences. "
@@ -220,6 +223,7 @@ def infer_unmatched_reasons(
         "If one source appears to include a date outside the other source's reporting period, label it as a timing difference. "
         "Prefer explanations such as timing difference, period mismatch, settlement delay, duplicate posting, currency variation, fees, or data extraction mismatches. "
         "Do not use missing invoice as a reason. "
+        + (f"{user_reason_hint}\n" if user_reason_hint else "")
         + (f"{reason_hint}\n" if reason_hint else "")
         + "Respond only with valid JSON in this format: [\n"
         "  { \"identifier\": ..., \"suggested_reason\": ... },\n"

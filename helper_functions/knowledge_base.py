@@ -84,3 +84,61 @@ def get_mismatch_reason_context() -> str:
         "Historically observed mismatch reasons from past reconciliations (prefer these labels when applicable):\n"
         + "\n".join(lines)
     )
+
+
+def record_user_reasons(field_a: str, field_b: str, reasons: dict) -> None:
+    """Store user-confirmed mismatch reasons for specific identifiers under a field pair.
+
+    reasons: {identifier_string: reason_string}
+    Overwrites any existing entry for the same (field_a, field_b, identifier) triple.
+    """
+    kb = load_kb()
+    user_reasons = kb.setdefault("user_reasons", [])
+    today = str(date.today())
+    existing = {
+        (e["field_a"], e["field_b"], e["identifier"]): i
+        for i, e in enumerate(user_reasons)
+    }
+    for identifier, reason in reasons.items():
+        reason = reason.strip()
+        if not reason:
+            continue
+        key = (field_a, field_b, str(identifier))
+        if key in existing:
+            user_reasons[existing[key]]["reason"] = reason
+            user_reasons[existing[key]]["recorded_at"] = today
+        else:
+            user_reasons.append({
+                "field_a": field_a,
+                "field_b": field_b,
+                "identifier": str(identifier),
+                "reason": reason,
+                "recorded_at": today,
+            })
+    save_kb(kb)
+
+
+def get_user_reason_context(field_a: str, field_b: str, max_examples: int = 15) -> str:
+    """Return a prompt hint with user-confirmed reasons for a specific field pair.
+
+    The LLM can use these as labelled examples to apply the same reasoning pattern
+    to new, unseen identifiers in the same pair context.
+    """
+    kb = load_kb()
+    user_reasons = kb.get("user_reasons", [])
+    relevant = [
+        e for e in user_reasons
+        if e["field_a"] == field_a and e["field_b"] == field_b
+    ]
+    if not relevant:
+        return ""
+    # Most recent first so the LLM sees up-to-date corrections
+    relevant.sort(key=lambda e: e.get("recorded_at", ""), reverse=True)
+    sample = relevant[:max_examples]
+    lines = [f"  - identifier {e['identifier']!r}: {e['reason']}" for e in sample]
+    return (
+        f"User-confirmed mismatch reasons for identifier pair "
+        f"({field_a} ↔ {field_b}) from past reconciliations "
+        f"— use these as labelled examples to infer the pattern and apply it to new rows:\n"
+        + "\n".join(lines)
+    )

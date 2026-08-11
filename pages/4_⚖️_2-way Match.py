@@ -690,25 +690,43 @@ if uploaded_a and uploaded_b:
                             else:
                                 st.info("No reasons entered to save.")
 
-                        # Flagging — use multiselect so state survives reruns reliably
-                        st.markdown("**Flag reasons as wrong:**")
-                        current_reasons = sorted(set(
+                        # Thumbs up / down per reason
+                        unique_reasons = sorted(set(
                             r for r in unmatched_edit["Reason"].astype(str).tolist() if r.strip()
                         ))
-                        reasons_to_flag = st.multiselect(
-                            "Select reason(s) to flag as incorrect — the AI will never use these again",
-                            options=current_reasons,
-                            key=f"flag_multiselect_{selected_key}",
-                        )
-                        if st.button("Flag selected reasons as wrong", key=f"flag_reasons_{selected_key}", type="secondary"):
-                            if reasons_to_flag:
-                                for reason in reasons_to_flag:
-                                    record_flagged_reason(reason)
-                                st.warning(f"Flagged {len(reasons_to_flag)} reason(s) as wrong — the AI will avoid these in future runs.")
-                        
+                        if unique_reasons:
+                            st.markdown("**Rate reasons** — 👍 confirms correct, 👎 bans from future runs:")
+                            feedback_key = f"reason_feedback_{selected_key}"
+                            if feedback_key not in st.session_state:
+                                st.session_state[feedback_key] = {}
+
+                            for reason in unique_reasons:
+                                import hashlib as _hl
+                                rkey = _hl.md5(reason.encode()).hexdigest()[:8]
+                                feedback = st.session_state[feedback_key].get(reason)
+                                label = f"✅ {reason}" if feedback == "up" else (f"❌ ~~{reason}~~" if feedback == "down" else reason)
+                                col_r, col_up, col_dn = st.columns([6, 1, 1])
+                                with col_r:
+                                    st.markdown(label)
+                                with col_up:
+                                    if st.button("👍", key=f"thumb_up_{selected_key}_{rkey}", help="Confirm this is a valid reason"):
+                                        ids_for_reason = {
+                                            str(row["identifier"]): reason
+                                            for _, row in unmatched_edit.iterrows()
+                                            if str(row["Reason"]).strip() == reason
+                                        }
+                                        record_user_reasons(field_a, field_b, ids_for_reason)
+                                        st.session_state[feedback_key][reason] = "up"
+                                        st.rerun()
+                                with col_dn:
+                                    if st.button("👎", key=f"thumb_dn_{selected_key}_{rkey}", help="Flag as wrong — AI will never use this again"):
+                                        record_flagged_reason(reason)
+                                        st.session_state[feedback_key][reason] = "down"
+                                        st.rerun()
+
                         # Filter Source A/B rows based on selected checkboxes
                         selected_identifiers = edited_unmatched[edited_unmatched["Select"]]["identifier"].astype(str).tolist()
-                        
+
                         if selected_identifiers:
                             filtered_a = unmatched_a_rows[unmatched_a_rows[selected["source_a_field"]].astype(str).isin(selected_identifiers)]
                             filtered_b = unmatched_b_rows[unmatched_b_rows[selected["source_b_field"]].astype(str).isin(selected_identifiers)]

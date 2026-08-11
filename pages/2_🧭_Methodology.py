@@ -87,14 +87,15 @@ st.subheader("Key design choices")
 st.markdown("""
 | What we chose | Why |
 |---|---|
-| **Ask AI directly** | The data is small enough to show the AI everything at once. No need to search for pieces. |
-| **Learn & remember** | When you say 👍 or 👎, the app remembers your choice. Next time, the AI uses what you taught it. |
-| **Rate each row** | Instead of big popup forms, you just click 👍 or 👎 right on the row. Fast and easy. |
-| **Nice tables** | Headers stay at the top so you can always see what each column means, even when scrolling. |
-| **Check dates first** | If a transaction is in a different month, that's why it doesn't match. Check dates before asking the AI. |
-| **Keep data safe** | All your secret data stays on your computer. We only save labels and patterns, not your numbers. |
-| **Test everything** | We have checkpoints that test if learning works, if AI suggestions are right, and if timing checks work. |
-| **Use GPT-4o-mini** | It's smart enough for what we need and costs just the right amount. |
-| **Remember and reset** | The app memorizes answers to avoid asking the same question twice. When you teach it something new, it forgets the old answer to learn fresh. |
+| **Ask AI directly instead of searching** | The reconciliation data is small structured tables that fit in one prompt. Searching through a database adds unnecessary complexity. We send everything to the AI at once. |
+| **Learn from your feedback** | When you click 👍 or 👎, the system saves your correction. Next time with the same field pair, the AI gets your previous examples as hints. 👍 = positive example. 👎 = hard ban. Simple, transparent, no vector embeddings needed. |
+| **Rate reasons per row** | Instead of filling out big forms, you just click 👍 or 👎 directly on each row. Instant feedback, no friction. Edits sync across All/Matched/Unmatched tabs in real-time. |
+| **Frozen headers & sorting** | Headers stay locked at the top when you scroll. Columns are sortable. This matches what analysts expect from Excel-like interfaces and improves usability for large result sets. |
+| **Check dates first, then ask AI** | Timing differences are deterministic—just compare transaction dates to the matched period. Pre-detect timing mismatches in code (fast, reliable) before asking the AI. If no date evidence, AI prioritizes timing difference as reason #1. Ensures timing errors are never missed. |
+| **Keep data local & safe** | All your financial data stays on your computer. knowledge_base.json only stores patterns (field pairs, reason labels), not transaction amounts or details. No external API calls, no data leakage risk. |
+| **Test everything (54 tests)** | Tests are checkpoints: they verify KB persistence, LLM prompt injection, timing detection, and end-to-end learning. If something breaks, tests catch it immediately. This is especially critical for financial reconciliation. |
+| **Use GPT-4o-mini** | It's cost-effective, fast enough for structured data interpretation, and supports JSON parsing + conditional logic. Balances price, speed, and reasoning quality. |
+| **Remember & refresh cache** | The app caches LLM results within a session to avoid redundant API calls. Cache is invalidated only when learning changes (new flagged or confirmed reasons). This avoids stale suggestions while reducing costs. |
 """)
+
 

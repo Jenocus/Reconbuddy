@@ -582,13 +582,16 @@ if uploaded_a and uploaded_b:
                     ).properties(height=300)
                     st.altair_chart(exposure_chart, use_container_width=True)
 
-                    # Initialize shared reason edits tracking across all tabs
+                    # Initialize shared reason edits and feedback tracking across all tabs
                     reason_edits_key = f"reason_edits_{selected_key}"
                     if reason_edits_key not in st.session_state:
                         st.session_state[reason_edits_key] = {}
 
+                    feedback_key = f"reason_feedback_{selected_key}"
+                    if feedback_key not in st.session_state:
+                        st.session_state[feedback_key] = {}
+
                     def apply_reason_edits(df, reason_column_name="suggested_reason"):
-                        """Apply tracked edits from session_state to the dataframe"""
                         df = df.copy()
                         for identifier, edited_reason in st.session_state[reason_edits_key].items():
                             mask = df["identifier"].astype(str) == str(identifier)
@@ -596,51 +599,111 @@ if uploaded_a and uploaded_b:
                                 df.loc[mask, reason_column_name] = edited_reason
                         return df
 
+                    def fmt_num(val):
+                        try:
+                            return f"{float(val):,.2f}" if pd.notna(val) and val != "" else "–"
+                        except Exception:
+                            return "–"
+
+                    def render_reason_rows(rows_df, tab_key, show_select=False, show_status=False):
+                        """Render rows with editable Reason and inline 👍/👎 per row."""
+                        import hashlib as _hl
+                        # Header
+                        col_widths = []
+                        headers = []
+                        if show_select:
+                            col_widths.append(0.4)
+                            headers.append("☑")
+                        headers += ["Identifier", "Amt A", "Amt B", "Diff"]
+                        col_widths += [2.5, 1.4, 1.4, 1.1]
+                        if show_status:
+                            col_widths.append(1.2)
+                            headers.append("Status")
+                        col_widths += [3, 0.55, 0.55]
+                        headers += ["Reason", "👍", "👎"]
+
+                        hcols = st.columns(col_widths)
+                        for hc, h in zip(hcols, headers):
+                            hc.markdown(f"**{h}**")
+
+                        selected_ids = []
+                        for pos, (_, row) in enumerate(rows_df.iterrows()):
+                            identifier = str(row["identifier"])
+                            current_reason = st.session_state[reason_edits_key].get(
+                                identifier, str(row.get("Reason", "") or "").strip()
+                            )
+                            feedback = st.session_state[feedback_key].get(current_reason, "")
+                            rkey = _hl.md5(f"{tab_key}_{pos}_{identifier}".encode()).hexdigest()[:10]
+
+                            rcols = st.columns(col_widths)
+                            ci = 0
+                            if show_select:
+                                sel = rcols[ci].checkbox("", key=f"sel_{rkey}", label_visibility="collapsed")
+                                if sel:
+                                    selected_ids.append(identifier)
+                                ci += 1
+                            rcols[ci].caption(identifier); ci += 1
+                            rcols[ci].caption(fmt_num(row.get("total_amount_a"))); ci += 1
+                            rcols[ci].caption(fmt_num(row.get("total_amount_b"))); ci += 1
+                            rcols[ci].caption(fmt_num(row.get("difference"))); ci += 1
+                            if show_status:
+                                rcols[ci].caption(str(row.get("status", ""))); ci += 1
+
+                            new_reason = rcols[ci].text_input(
+                                "", value=current_reason, key=f"ri_{rkey}",
+                                label_visibility="collapsed",
+                            ); ci += 1
+                            if new_reason != current_reason:
+                                st.session_state[reason_edits_key][identifier] = new_reason
+
+                            reason_for_rating = new_reason or current_reason
+                            up_label = "✅" if feedback == "up" else "👍"
+                            dn_label = "❌" if feedback == "down" else "👎"
+
+                            with rcols[ci]:
+                                if st.button(up_label, key=f"up_{rkey}", help="Confirm correct — saves to KB"):
+                                    if reason_for_rating:
+                                        record_user_reasons(field_a, field_b, {identifier: reason_for_rating})
+                                        st.session_state[feedback_key][reason_for_rating] = "up"
+                                        st.rerun()
+                            ci += 1
+                            with rcols[ci]:
+                                if st.button(dn_label, key=f"dn_{rkey}", help="Flag as wrong — AI will never use this again"):
+                                    if reason_for_rating:
+                                        record_flagged_reason(reason_for_rating)
+                                        st.session_state[feedback_key][reason_for_rating] = "down"
+                                        st.rerun()
+
+                        return selected_ids
+
                     all_tab, matched_tab, unmatched_tab = st.tabs([
                         "All",
                         f"Matched ({matched_count})",
                         f"Unmatched ({unmatched_count})",
                     ])
                     with all_tab:
-                        all_edit = details[[
+                        all_rows = details[[
                             "identifier", "total_amount_a", "total_amount_b", "difference", "status"
                         ]].copy()
-                        all_edit["Reason"] = apply_reason_edits(details, "suggested_reason")["suggested_reason"].fillna("")
-                        readonly_cols_all = [c for c in all_edit.columns if c != "Reason"]
-                        edited_all = st.data_editor(
-                            all_edit,
-                            disabled=readonly_cols_all,
-                            use_container_width=True,
-                            key=f"all_editor_{selected_key}",
-                            column_config={
-                                "Reason": st.column_config.TextColumn(
-                                    "Reason",
-                                    help="Edit reasons for any rows, then click Save to train the AI.",
-                                )
-                            },
-                        )
-                        # Update session state with edits from this tab
-                        for _, row in edited_all.iterrows():
-                            identifier = str(row["identifier"])
-                            reason = str(row["Reason"]).strip()
-                            if reason:
-                                st.session_state[reason_edits_key][identifier] = reason
-                        if st.button("Save reasons to knowledge base", key=f"save_reasons_all_{selected_key}"):
+                        all_rows["Reason"] = apply_reason_edits(details, "suggested_reason")["suggested_reason"].fillna("")
+                        render_reason_rows(all_rows, f"all_{selected_key}", show_status=True)
+                        if st.button("Save all reasons to knowledge base", key=f"save_reasons_all_{selected_key}"):
                             reasons_to_save = {
-                                str(row["identifier"]): str(row["Reason"]).strip()
-                                for _, row in edited_all.iterrows()
-                                if str(row["Reason"]).strip()
+                                str(row["identifier"]): st.session_state[reason_edits_key].get(
+                                    str(row["identifier"]), str(row["Reason"]).strip()
+                                )
+                                for _, row in all_rows.iterrows()
+                                if st.session_state[reason_edits_key].get(str(row["identifier"]), str(row["Reason"]).strip())
                             }
                             if reasons_to_save:
                                 record_user_reasons(field_a, field_b, reasons_to_save)
                                 st.success(f"Saved {len(reasons_to_save)} reason(s) to knowledge base.")
                             else:
-                                st.info("No reasons entered to save.")
+                                st.info("No reasons to save.")
                     with matched_tab:
                         matched_edit = details[details["status"] == "Matched"][[
                             "identifier", "total_amount_a", "total_amount_b", "difference"
                         ]].copy()
-                        readonly_cols_matched = list(matched_edit.columns)
                         st.dataframe(matched_edit, use_container_width=True)
                     with unmatched_tab:
                         st.markdown(f"### Unmatched rows ({unmatched_count})")
@@ -648,84 +711,26 @@ if uploaded_a and uploaded_b:
                             f"**Unmatched total in Source A:** {unmatched_total_a:,.2f}  \
                             **Unmatched total in Source B:** {unmatched_total_b:,.2f}"
                         )
-                        unmatched_edit = details[details["status"] != "Matched"][
-                            ["identifier", "total_amount_a", "total_amount_b", "difference"]
-                        ].copy()
-                        unmatched_with_edits = apply_reason_edits(details[details["status"] != "Matched"], "suggested_reason")
-                        unmatched_edit["Reason"] = unmatched_with_edits["suggested_reason"].values
-                        unmatched_edit.insert(0, "Select", False)
-                        readonly_cols = [c for c in unmatched_edit.columns if c not in ["Reason", "Select"]]
-                        edited_unmatched = st.data_editor(
-                            unmatched_edit,
-                            disabled=readonly_cols,
-                            use_container_width=True,
-                            key=f"unmatched_editor_{selected_key}",
-                            column_config={
-                                "Select": st.column_config.CheckboxColumn(
-                                    "Select",
-                                    help="Check a row to highlight its corresponding rows in Source A/B",
-                                    width="small",
-                                ),
-                                "Reason": st.column_config.TextColumn(
-                                    "Reason",
-                                    help="LLM-suggested reason. Edit to correct it, then click Save to train the AI for future runs on this identifier pair.",
-                                ),
-                            },
+                        unmatched_rows_df = details[details["status"] != "Matched"].copy()
+                        unmatched_rows_df["Reason"] = apply_reason_edits(
+                            details[details["status"] != "Matched"], "suggested_reason"
+                        )["suggested_reason"].values
+                        selected_identifiers = render_reason_rows(
+                            unmatched_rows_df, f"unmatched_{selected_key}", show_select=True
                         )
-                        # Update session state with edits from this tab
-                        for _, row in edited_unmatched.iterrows():
-                            identifier = str(row["identifier"])
-                            reason = str(row["Reason"]).strip()
-                            if reason:
-                                st.session_state[reason_edits_key][identifier] = reason
-                        if st.button("Save reasons to knowledge base", key=f"save_reasons_{selected_key}"):
+                        if st.button("Save all reasons to knowledge base", key=f"save_reasons_{selected_key}"):
                             reasons_to_save = {
-                                str(row["identifier"]): str(row["Reason"]).strip()
-                                for _, row in edited_unmatched.iterrows()
-                                if str(row["Reason"]).strip()
+                                str(row["identifier"]): st.session_state[reason_edits_key].get(
+                                    str(row["identifier"]), str(row["Reason"]).strip()
+                                )
+                                for _, row in unmatched_rows_df.iterrows()
+                                if st.session_state[reason_edits_key].get(str(row["identifier"]), str(row["Reason"]).strip())
                             }
                             if reasons_to_save:
                                 record_user_reasons(field_a, field_b, reasons_to_save)
                                 st.success(f"Saved {len(reasons_to_save)} reason(s) to knowledge base.")
                             else:
-                                st.info("No reasons entered to save.")
-
-                        # Thumbs up / down per reason
-                        unique_reasons = sorted(set(
-                            r for r in unmatched_edit["Reason"].astype(str).tolist() if r.strip()
-                        ))
-                        if unique_reasons:
-                            st.markdown("**Rate reasons** — 👍 confirms correct, 👎 bans from future runs:")
-                            feedback_key = f"reason_feedback_{selected_key}"
-                            if feedback_key not in st.session_state:
-                                st.session_state[feedback_key] = {}
-
-                            for reason in unique_reasons:
-                                import hashlib as _hl
-                                rkey = _hl.md5(reason.encode()).hexdigest()[:8]
-                                feedback = st.session_state[feedback_key].get(reason)
-                                label = f"✅ {reason}" if feedback == "up" else (f"❌ ~~{reason}~~" if feedback == "down" else reason)
-                                col_r, col_up, col_dn = st.columns([6, 1, 1])
-                                with col_r:
-                                    st.markdown(label)
-                                with col_up:
-                                    if st.button("👍", key=f"thumb_up_{selected_key}_{rkey}", help="Confirm this is a valid reason"):
-                                        ids_for_reason = {
-                                            str(row["identifier"]): reason
-                                            for _, row in unmatched_edit.iterrows()
-                                            if str(row["Reason"]).strip() == reason
-                                        }
-                                        record_user_reasons(field_a, field_b, ids_for_reason)
-                                        st.session_state[feedback_key][reason] = "up"
-                                        st.rerun()
-                                with col_dn:
-                                    if st.button("👎", key=f"thumb_dn_{selected_key}_{rkey}", help="Flag as wrong — AI will never use this again"):
-                                        record_flagged_reason(reason)
-                                        st.session_state[feedback_key][reason] = "down"
-                                        st.rerun()
-
-                        # Filter Source A/B rows based on selected checkboxes
-                        selected_identifiers = edited_unmatched[edited_unmatched["Select"]]["identifier"].astype(str).tolist()
+                                st.info("No reasons to save.")
 
                         if selected_identifiers:
                             filtered_a = unmatched_a_rows[unmatched_a_rows[selected["source_a_field"]].astype(str).isin(selected_identifiers)]

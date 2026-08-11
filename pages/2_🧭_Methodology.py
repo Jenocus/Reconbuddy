@@ -21,7 +21,11 @@ st.markdown(
     "2. Parse the documents and extract tables or text.\n"
     "3. Normalize headers and detect likely amount fields.\n"
     "4. Use LLM-based analysis to suggest shared identifiers and field mappings.\n"
-    "5. Reconcile totals, inspect unmatched rows, and export a report."
+    "5. Reconcile totals by identifier; detect timing differences by comparing dates to matched period.\n"
+    "6. Review unmatched rows with LLM-suggested reasons; edit reasons across tabs (All, Matched, Unmatched).\n"
+    "7. Save user-corrected reasons to knowledge base for learning.\n"
+    "8. Ask questions about sources via LLM chatbox (reads uploaded data and reconciliation metrics).\n"
+    "9. Export reconciliation report and use learned patterns for future reconciliations."
 )
 
 st.subheader("Implementation detail")
@@ -63,24 +67,42 @@ st.markdown(
 
 st.caption("This methodology is intentionally transparent so analysts can inspect each stage and understand why the application made a particular recommendation.")
 
+st.subheader("Knowledge base for learning")
+st.write(
+    "Reconbuddy maintains a knowledge base (knowledge_base.json) that learns from user corrections across sessions. When you edit a mismatch reason and save it, the system records: "
+    "(1) which field pair was reconciled, (2) the reason you confirmed, and (3) the specific identifier. "
+    "On future reconciliations with the same field pair, the LLM receives these user-confirmed examples as hints, improving suggestions over time."
+)
+
+st.subheader("Timing difference detection")
+st.write(
+    "Timing differences are automatically detected by comparing transaction dates. The system analyzes the date range of all matched rows (e.g., Jan 1-31), "
+    "then flags any unmatched row with a date outside that period as a timing difference. This is the highest-priority unmatched reason and ensures transactions "
+    "that belong in a different reporting period are not misclassified as missing or duplicated."
+)
+
 st.subheader("Key design choices")
 st.table(
     {
         "Decision": [
             "Direct LLM prompting instead of RAG",
-            "Session state for pair memory (not a vector store)",
+            "Knowledge base (JSON) for learning, not a vector store",
+            "Session state for cross-tab reason sync",
             "No persistent database",
-            "LLM used for field mapping, not rules",
-            "Full document text sent to LLM (no chunking)",
+            "Timing difference detected in code, not via LLM",
+            "LLM used for field mapping and secondary reasons",
+            "Full document data sent to chatbox",
             "GPT-4o-mini as the LLM",
-            "Streamlit session state for caching analysis",
+            "Streamlit session state for caching",
         ],
         "Reason": [
             "Reconciliation inputs are small structured tables that fit within a single prompt window; retrieval overhead is unnecessary.",
-            "Users typically compare the same two sources in one sitting. Session state is sufficient and avoids the complexity of a vector store for this pattern.",
+            "Users build patterns over time by confirming reasons for the same field pairs. A simple JSON KB stores examples and aggregates; no vector embeddings needed.",
+            "When a user edits a reason in one tab (All, Matched, or Unmatched), session state tracks it so other tabs display the same edit immediately.",
             "No user data is retained between sessions, reducing privacy risk and infrastructure overhead.",
-            "Column names often differ across systems (e.g. 'InvNum' vs 'invoice_id'). An LLM interprets intent better than brittle keyword rules.",
-            "Uploaded files are financial tables, not long prose documents. Chunking would fragment tabular structure and reduce accuracy.",
+            "Date-based logic is deterministic and fast; letting the LLM guess leads to false negatives. Pre-detecting timing differences ensures they are never misclassified.",
+            "Column names often differ across systems (e.g. 'InvNum' vs 'invoice_id'). An LLM interprets intent better than brittle keyword rules. For timing differences, detection is deterministic.",
+            "The chatbox LLM needs access to uploaded data samples and reconciliation metrics to answer questions accurately (e.g., 'Why are amounts different?').",
             "Balances cost, speed, and reasoning quality for structured data interpretation tasks.",
             "LLM analysis for the same pair of sources is deterministic enough to cache within a session, avoiding redundant API calls when the user revisits settings.",
         ],

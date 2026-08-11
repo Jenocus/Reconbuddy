@@ -569,9 +569,63 @@ if uploaded_a and uploaded_b:
                         f"Unmatched ({unmatched_count})",
                     ])
                     with all_tab:
-                        st.dataframe(details_styled)
+                        all_edit = details[[
+                            "identifier", "total_amount_a", "total_amount_b", "difference", "status"
+                        ]].copy()
+                        all_edit["Reason"] = details["suggested_reason"].fillna("")
+                        readonly_cols_all = [c for c in all_edit.columns if c != "Reason"]
+                        edited_all = st.data_editor(
+                            all_edit,
+                            disabled=readonly_cols_all,
+                            use_container_width=True,
+                            key=f"all_editor_{selected_key}",
+                            column_config={
+                                "Reason": st.column_config.TextColumn(
+                                    "Reason",
+                                    help="Edit reasons for any rows, then click Save to train the AI.",
+                                )
+                            },
+                        )
+                        if st.button("Save reasons to knowledge base", key=f"save_reasons_all_{selected_key}"):
+                            reasons_to_save = {
+                                str(row["identifier"]): str(row["Reason"]).strip()
+                                for _, row in edited_all.iterrows()
+                                if str(row["Reason"]).strip()
+                            }
+                            if reasons_to_save:
+                                record_user_reasons(field_a, field_b, reasons_to_save)
+                                st.success(f"Saved {len(reasons_to_save)} reason(s) to knowledge base.")
+                            else:
+                                st.info("No reasons entered to save.")
                     with matched_tab:
-                        st.dataframe(format_dataframe_numbers(details[details["status"] == "Matched"]))
+                        matched_edit = details[details["status"] == "Matched"][[
+                            "identifier", "total_amount_a", "total_amount_b", "difference"
+                        ]].copy()
+                        matched_edit["Reason"] = details.loc[details["status"] == "Matched", "suggested_reason"].fillna("").values
+                        readonly_cols_matched = [c for c in matched_edit.columns if c != "Reason"]
+                        edited_matched = st.data_editor(
+                            matched_edit,
+                            disabled=readonly_cols_matched,
+                            use_container_width=True,
+                            key=f"matched_editor_{selected_key}",
+                            column_config={
+                                "Reason": st.column_config.TextColumn(
+                                    "Reason",
+                                    help="Add notes or reasons for matched items, then click Save to train the AI.",
+                                )
+                            },
+                        )
+                        if st.button("Save reasons to knowledge base", key=f"save_reasons_matched_{selected_key}"):
+                            reasons_to_save = {
+                                str(row["identifier"]): str(row["Reason"]).strip()
+                                for _, row in edited_matched.iterrows()
+                                if str(row["Reason"]).strip()
+                            }
+                            if reasons_to_save:
+                                record_user_reasons(field_a, field_b, reasons_to_save)
+                                st.success(f"Saved {len(reasons_to_save)} reason(s) to knowledge base.")
+                            else:
+                                st.info("No reasons entered to save.")
                     with unmatched_tab:
                         st.markdown(f"### Unmatched rows ({unmatched_count})")
                         st.markdown(

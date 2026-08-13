@@ -163,7 +163,7 @@ with tab3:
         "heterogeneous financial reports."
     )
     st.write(
-           "To address the first two objectives, development began with a Shared Identifier Finder capability. "
+           "To address the first two objectives, development began with 🔍 Shared Identifier Finder capability. "
            "This component enables users to upload two documents and identify likely shared identifiers "
            "before reconciliation is performed."
     )

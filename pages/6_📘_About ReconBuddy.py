@@ -37,6 +37,10 @@ st.markdown(
             margin: 0.8rem 0 1rem 0;
             color: #19344d;
         }
+        div[data-testid="stMetricValue"] {
+            font-size: 1rem;
+            line-height: 1.2;
+        }
     </style>
     """,
     unsafe_allow_html=True,

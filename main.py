@@ -25,7 +25,7 @@ Welcome to ReconBuddy! Navigate using the **sidebar** to explore:
 - ℹ️ **About ReconBuddy** — Learn about the project scope, objectives, and tech stack
 - 🧭 **Methodology** — Understand the workflow behind shared-identifier discovery and reconciliation
 """)
-st.warning("IMPORTANT NOTICE: This web application is developed as a proof-of-concept prototype. "
+st.warning("IMPORTANT NOTICE: This web application is developed as a proof-of-concept prototype.\n\n"
            "The information provided here is NOT intended for actual usage and should not be relied "
            "upon for making any decisions, especially those related to financial, legal, or "
            "healthcare matters.\n\n"

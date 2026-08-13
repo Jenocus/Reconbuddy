@@ -105,17 +105,17 @@ with tab2:
         "| Design Decision | Rationale |\n"
         "|---|---|\n"
         "| AI-Assisted Identifier Discovery | Uses semantic analysis and LLM reasoning to identify likely matching identifiers across heterogeneous datasets, including differently named fields and identifiers embedded in free-text descriptions. Reduces manual mapping effort and improves matching accuracy. |\n"
-        "| Direct Prompt Engineering over RAG | Reconciliation datasets are typically small, structured, and fit within a single prompt context. Direct prompting enables the LLM to reason across field mappings, mismatch patterns, timing indicators, and knowledge base context in a single pass without retrieval overhead. |\n"
-        "| Dual-Layer Timing Difference Detection | Combines deterministic date-range analysis with AI reasoning. The system first identifies timing differences using rule-based logic before invoking AI, ensuring reliable detection and minimising hallucination risk. |\n"
+        "| Direct Prompt Engineering over RAG | Reconciliation datasets are typically critical for financial accuracy, structured, and fit within a single prompt context. Direct prompting enables the LLM to reason across field mappings, mismatch patterns, timing indicators, and knowledge base context in a single pass without retrieval overhead. |\n"
+        "| Dual-Layer Timing Difference Detection | As timing difference is usually the top reason for mismatches, the system combines deterministic date-range analysis with AI reasoning. The system first identifies timing differences using rule-based logic before invoking AI, ensuring reliable detection and minimising hallucination risk. |\n"
         "| Knowledge Base-Guided Reasoning | AI recommendations are enhanced using previously confirmed examples and prohibited explanations stored in the knowledge base. This improves consistency, relevance, and organisational alignment over time. |\n"
         "| Human-in-the-Loop Validation | Analysts retain control over reconciliation outcomes by reviewing and validating AI-generated recommendations. This ensures governance, accountability, and auditability in financial processes. |\n"
         "| Continuous Learning Through Feedback | Confirmed reasons (👍) are stored as positive examples, while rejected reasons (👎) become prohibited explanations. Future reconciliations automatically benefit from prior analyst decisions. |\n"
+        "| No Password set for Admin tab | Typical users are the analysts who actively use the Admin tab to improve the learning of the system via continuous learning through feedback. \n"
         "| Conversational Reconciliation Assistant | Enables users to interact with uploaded documents and reconciliation results using natural language. Users can investigate discrepancies, query transaction details, identify patterns, and generate summaries without manual dataset analysis. |\n"
         "| Session-State Caching with KB Invalidation | Reduces duplicate LLM calls while ensuring newly approved examples and flagged reasons are reflected immediately. Cached results are refreshed when the knowledge base changes. |\n"
         "| Privacy-Preserving AI Architecture | Learning is retained locally through a JSON-based knowledge base. No transaction-level data is stored in the knowledge base, reducing privacy, security, and compliance risks. |\n"
         "| GPT-4o-mini LLM Strategy | Selected to balance reasoning quality, response time, and operational cost. Provides strong performance for identifier discovery, reconciliation reasoning, and conversational assistance. |\n"
         "| Interactive Analyst Experience | Sortable tables, frozen headers, and synchronised views support efficient review of large reconciliation datasets while maintaining visibility of AI-generated recommendations. |\n"
-        "| Comprehensive Automated Testing Framework | Validates reconciliation logic, knowledge base learning, timing-difference detection, prompt generation, and end-to-end workflows to ensure reliability and learning integrity. |"
     )
 
 with tab3:

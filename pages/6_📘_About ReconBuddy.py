@@ -163,14 +163,16 @@ with tab3:
         "heterogeneous financial reports."
     )
     st.write(
-           "To address the first two objectives, development began with a Shared Identifier Finder capability."
+           "To address the first two objectives, development began with a Shared Identifier Finder capability. "
            "This component enables users to upload two documents and identify likely shared identifiers"
-           "before reconciliation is performed.\n"
+           "before reconciliation is performed."
+    )
+    st.write(
            "Rather than relying on hard-coded field-name matching, the solution uses semantic analysis and "
-           "LLM reasoning to identify likely matching identifiers across heterogeneous datasets."
-           "It can interpret the meaning of fields, recognise relationships between differently named columns,"
-           "and identify identifiers embedded within descriptions or other free-text fields."
-           "The system then proposes recommended identifier mappings and allows analysts to confirm"
+           "LLM reasoning to identify likely matching identifiers across heterogeneous datasets. "
+           "It can interpret the meaning of fields, recognise relationships between differently named columns, "
+           "and identify identifiers embedded within descriptions or other free-text fields. "
+           "The system then proposes recommended identifier mappings and allows analysts to confirm "
            "the preferred matching keys before reconciliation begins."
        )
     st.info(

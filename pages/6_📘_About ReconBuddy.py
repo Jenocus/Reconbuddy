@@ -257,16 +257,15 @@ with tab5:
         "|---|---|\n"
         "| 📄 Upload and Parse Multiple Source Files | Ingest PDF, Excel, and CSV files for reconciliation |\n"
         "| 🔍 AI-Assisted Identifier Discovery | Identify likely shared identifiers across heterogeneous datasets, including free text |\n"
-        "| 🧾 Amount Reconciliation Using Selected Identifier Pairs | Reconcile transactions across multiple sources using analyst-approved keys |\n"
+        "| 🧾 Amount Reconciliation Using Selected Identifier Pairs | Reconcile transactions across multiple sources |\n"
         "| ⏰ Automatic Timing Difference Detection | Detect timing differences by comparing transaction dates against matched periods |\n"
         "| 🤖 LLM-Powered Mismatch Reason Inference | Generate likely explanations for unmatched transactions using context and feedback |\n"
-        "| 📊 Interactive Reconciliation Review | Review matched, unmatched, and all transactions through sortable tables with frozen headers |\n"
+        "| 📊 Reconciliation Review | Review matched, unmatched, and all transactions through sortable tables with frozen headers |\n"
         "| 👍👎 Inline Analyst Feedback and Validation | Edit, confirm, or reject AI-generated mismatch reasons directly in results |\n"
         "| 📚 Continuous Learning Knowledge Base | Confirmed reasons become positive examples; flagged reasons are excluded later |\n"
         "| ✓ Knowledge Base Administration | Manage approved field pairings, user examples, and flagged reasons |\n"
         "| 💬 Conversational Reconciliation Assistant | Ask natural-language questions about files, transactions, and results |\n"
         "| 📤 Export Reconciliation Reports | Download outcomes and explanations in Excel or CSV |\n"
-        "| 🔒 Privacy-Preserving Local Learning | Store learning locally without retaining transaction-level data in the knowledge base |"
     )
 
 with tab6:

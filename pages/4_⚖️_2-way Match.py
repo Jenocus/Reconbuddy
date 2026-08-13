@@ -157,8 +157,8 @@ with st.expander("How it works"):
         "You can choose a different identifier candidate and compare totals for each source."
     )
 
-uploaded_a = st.file_uploader("Upload Source A (1 or 2 files)", type=["pdf", "csv", "xls", "xlsx"], accept_multiple_files=True, key="recon_a")
-uploaded_b = st.file_uploader("Upload Source B (1 or 2 files)", type=["pdf", "csv", "xls", "xlsx"], accept_multiple_files=True, key="recon_b")
+uploaded_a = st.file_uploader("Upload Source A ", type=["pdf", "csv", "xls", "xlsx"], accept_multiple_files=True, key="recon_a")
+uploaded_b = st.file_uploader("Upload Source B ", type=["pdf", "csv", "xls", "xlsx"], accept_multiple_files=True, key="recon_b")
 business_context = st.text_area(
     "Optional business context",
     value="Example: Reconcile amounts using the shared transaction or trace identifier.",

@@ -3,7 +3,7 @@ from helper_functions.utility import check_password
 
 st.set_page_config(
     layout="wide",
-    page_title="Methodology2",
+    page_title="Methodology",
     page_icon="🧭",
 )
 
@@ -45,7 +45,7 @@ st.markdown(
 st.markdown(
     """
     <div class="m2-hero">
-        <h1>🧭 Methodology2</h1>
+        <h1>🧭 Methodology</h1>
         <p>
             A complete end-to-end AI-assisted reconciliation workflow that combines deterministic checks,
             LLM reasoning, analyst governance, and continuous learning.
@@ -84,18 +84,18 @@ with tab1:
         "| 4 | 🧠 AI/LLM | Analyse Data Structure | Review field names, descriptions, and extracted text to understand the business context of each dataset. |\n"
         "| 5 | 🧠 AI/LLM + 📊 Analyst | AI-Assisted Identifier Selection | Use semantic analysis to identify likely matching identifiers across datasets, including differently named fields and identifiers embedded in free text. Present recommended matches for analyst review and confirmation. |\n"
         "| 6 | 🔧 System | Aggregate and Reconcile | Group transactions by the selected identifier and aggregate amounts from each source for comparison. |\n"
-        "| 7 | ⏰ System | Pre-detect Timing Differences | Analyse matched transaction date ranges and automatically flag potential timing differences before AI analysis. |\n"
+        "| 7 | 🔧 System | Pre-detect Timing Differences | Analyse matched transaction date ranges and automatically flag potential timing differences before AI analysis. |\n"
         "| 8 | 📚 AI/KB | Load Knowledge Base Context | Retrieve relevant field mappings, confirmed examples, and flagged reasons from prior reconciliations. |\n"
-        "| 9 | 🔀 System | Classify Records | Categorise transactions as Matched (within tolerance) or Unmatched (difference exceeds tolerance). |\n"
+        "| 9 | 🔧 System | Classify Records | Categorise transactions as Matched (within tolerance) or Unmatched (difference exceeds tolerance). |\n"
         "| 10 | 🧠 AI/LLM | Infer Reconciliation Reasons | Analyse unmatched transactions using transaction details, timing indicators, and knowledge base context. |\n"
         "| 11 | 🤖 AI/KB | Generate Suggested Reasons | Suggest explanations using approved examples while excluding previously flagged reasons. |\n"
-        "| 12 | 📋 Analyst | Review Results | Review All, Matched, and Unmatched transactions through sortable tables with frozen headers. |\n"
-        "| 13 | ⭐ System | Display Suggested Reasons | Present AI-generated explanations alongside each unmatched transaction. |\n"
+        "| 12 | 📊 Analyst | Review Results | Review All, Matched, and Unmatched transactions through sortable tables with frozen headers. |\n"
+        "| 13 | 🔧 System | Display Suggested Reasons | Present AI-generated explanations alongside each unmatched transaction. |\n"
         "| 14 | 👍👎 Analyst | Rate Suggestions | Confirm accurate explanations (👍) or flag incorrect explanations (👎). |\n"
-        "| 15 | 💾 System | Record Feedback | Save confirmed explanations as positive examples and flagged explanations as prohibited reasons in the knowledge base. |\n"
+        "| 15 | 🔧 System | Record Feedback | Save confirmed explanations as positive examples and flagged explanations as prohibited reasons in the knowledge base. |\n"
         "| 16 | 🔄 AI/KB | Update Knowledge Base | Recalculate the KB hash and invalidate cached AI responses whenever feedback changes. |\n"
-        "| 17 | 💬 Analyst + 🧠 AI/LLM | Conversational Reconciliation Assistant | Ask natural-language questions about uploaded documents, transactions, mismatches, reconciliation results, and identified patterns. The assistant provides contextual insights, summaries, and investigation support without manual filtering. |\n"
-        "| 18 | ✅ Analyst | Export Reconciliation Report | Download reconciliation results, status, differences, and explanations in Excel or CSV format. |\n"
+        "| 17 | 📊 Analyst + 🧠 AI/LLM | Conversational Reconciliation Assistant | Ask natural-language questions about uploaded documents, transactions, mismatches, reconciliation results, and identified patterns. The assistant provides contextual insights, summaries, and investigation support without manual filtering. |\n"
+        "| 18 | 📊 Analyst | Export Reconciliation Report | Download reconciliation results, status, differences, and explanations in Excel or CSV format. |\n"
         "| 19 | 🔁 Continuous Learning | Next Reconciliation | Future reconciliations automatically leverage approved examples, banned reasons, and learnt field mappings to improve suggestion quality and consistency. |"
     )
 

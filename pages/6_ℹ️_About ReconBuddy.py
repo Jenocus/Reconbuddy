@@ -255,7 +255,7 @@ with tab5:
     st.markdown(
         "| Capability | Description |\n"
         "|---|---|\n"
-        "| 📄 Upload and Parse Multiple Source Files | Ingest PDF, Excel, and CSV files for reconciliation |\n"
+        "| 📄 Upload and Parse Multiple Source Files | Ingest Excel, and CSV files for reconciliation (Ingest PDF is currently only available for 🔍 Shared Identifier Finder) |\n"
         "| 🔍 AI-Assisted Identifier Discovery | Identify likely shared identifiers across heterogeneous datasets, including free text |\n"
         "| 🧾 Amount Reconciliation Using Selected Identifier Pairs | Reconcile transactions across multiple sources |\n"
         "| ⏰ Automatic Timing Difference Detection | Detect timing differences by comparing transaction dates against matched periods |\n"

@@ -4,7 +4,7 @@ from helper_functions.utility import check_password
 st.set_page_config(
     layout="wide",
     page_title="About ReconBuddy",
-    page_icon="📘",
+    page_icon="ℹ️",
 )
 
 if not check_password():
@@ -49,7 +49,7 @@ st.markdown(
 st.markdown(
     """
     <div class="rb-hero">
-        <h1>📘 About ReconBuddy</h1>
+        <h1>ℹ️ About ReconBuddy</h1>
         <p>
             ReconBuddy is an AI-assisted reconciliation platform that automates matching, investigation,
             and explanation of financial transactions across disparate systems.

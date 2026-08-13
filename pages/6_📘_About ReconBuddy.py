@@ -209,7 +209,7 @@ with tab3:
     st.write("Implementing a 4-way reconciliation presents several challenges, including: ")
     st.markdown(
         "- Different data structures, field names and levels of aggregation across systems\n"
-        "- Transactions that are consolidated in one report but split across multiple records in another\n"
+        "- Transactions that are consolidated in one report but split across multiple records\n"
         "- Gross and net amount differences arising from payment gateway fees\n"
         "- Timing differences across multiple systems and reporting periods\n"
         "- Absence of common identifiers in some systems\n"

@@ -144,8 +144,9 @@ with tab2:
     st.write("- Conversational investigation through natural language queries")
 
     st.success(
-        "Results are presented through an interactive dashboard with structured, auditable, and "
-        "explainable reconciliation outcomes."
+        "Results are presented through a dashboard that enables users to review matched and "
+        "unmatched transactions, validate AI-generated recommendations, investigate discrepancies, and "
+        "export reconciliation results."
     )
 
 with tab3:
@@ -161,9 +162,28 @@ with tab3:
         "The PoC demonstrated the feasibility of AI-assisted matching and reconciliation across "
         "heterogeneous financial reports."
     )
+    st.write(
+           "To address the first two objectives, development began with a Shared Identifier Finder capability."
+           "This component enables users to upload two documents and identify likely shared identifiers"
+           "before reconciliation is performed.\n"
+           "Rather than relying on hard-coded field-name matching, the solution uses semantic analysis and "
+           "LLM reasoning to identify likely matching identifiers across heterogeneous datasets."
+           "It can interpret the meaning of fields, recognise relationships between differently named columns,"
+           "and identify identifiers embedded within descriptions or other free-text fields."
+           "The system then proposes recommended identifier mappings and allows analysts to confirm"
+           "the preferred matching keys before reconciliation begins."
+       )
+    st.info(
+        "This capability forms the foundation for subsequent reconciliation processes and can also be used independently "
+        "to discover shared identifiers across disparate documents, even where reconciliation is not required."
+    )
 
-    st.markdown("### Beyond the Proof-of-Concept")
-    st.write("ReconBuddy has evolved into a comprehensive AI-assisted reconciliation platform with:")
+    st.markdown("### Enhanced the Proof-of-Concept - ⚖️ 2-way Match")
+    st.write("The original Proof-of-Concept focused on validating the core reconciliation capability by accepting "
+             "two reports, identifying matching fields and records, and producing a structured output showing "
+             "matched transactions, valid differences, and discrepancies.")
+    st.write("ReconBuddy has since evolved into a comprehensive AI-assisted 2-way reconciliation platform with "
+             "capabilities beyond basic transaction matching, including:")
     st.markdown(
         "- AI-assisted identifier discovery across heterogeneous and free-text fields\n"
         "- Automated timing-difference detection for valid variances vs genuine exceptions\n"
@@ -173,7 +193,32 @@ with tab3:
         "- Conversational AI for natural language queries on source documents and results\n"
         "- Knowledge base administration, review tools, and exportable reports"
     )
+    st.info(
+        "As a result, ReconBuddy not only automates transaction matching but also assists users in investigating, "
+        "explaining, and continuously improving reconciliation outcomes through AI-driven insights and learning. "
+    )
 
+    st.markdown("### Beyond the Proof-of-Concept - 🔄 4-way Match")
+    st.write("The ultimate target is to implement 4-way reconciliation across the Stripe Payout Report, "
+             "Bank Statement, NFS Report, and CPSA+ Report within a single reconciliation workflow. ")
+    st.write("While the current 2-way matching capability can reconcile reports pairwise (e.g. Stripe vs Bank, "
+             "CPSA+ vs NFS), it requires multiple reconciliation runs and does not provide a consolidated "
+             "end-to-end view across all four data sources.")
+    st.write("Implementing a 4-way reconciliation presents several challenges, including: ")
+    st.markdown(
+        "- Different data structures, field names and levels of aggregation across systems\n"
+        "- Transactions that are consolidated in one report but split across multiple records in another\n"
+        "- Gross and net amount differences arising from payment gateway fees\n"
+        "- Timing differences across multiple systems and reporting periods\n"
+        "- Absence of common identifiers in some systems\n"
+        "- Discrepancies that span multiple reports rather than a single source pair"
+    )
+    st.info(
+        "Addressing these challenges requires more advanced matching logic, multi-source relationship analysis "
+        "and AI-assisted reasoning. The planned 4-way reconciliation capability will provide a more holistic and"
+        "automated reconciliation process, enabling Finance officers to trace transactions across the entire "
+        "payment lifecycle and identify exceptions more efficiently."
+    )
 with tab4:
     st.markdown("### Short-Term Benefits")
     short_col1, short_col2 = st.columns(2)
@@ -204,7 +249,7 @@ with tab4:
     )
 
 with tab5:
-    st.markdown("### Core AI Capabilities")
+    st.markdown("### Core Capabilities")
     st.markdown(
         "| Capability | Description |\n"
         "|---|---|\n"

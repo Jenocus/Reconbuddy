@@ -153,7 +153,7 @@ with tab3:
     st.markdown("### Proof-of-Concept Scope")
     st.write("The original Proof-of-Concept validated core reconciliation capability by:")
     st.markdown(
-        "- Accepting two reports in common formats\n"
+        "- Accepting two reports in excel or csv format\n"
         "- Identifying matching fields and records\n"
         "- Producing structured outputs for matched transactions, valid differences, and discrepancies"
     )

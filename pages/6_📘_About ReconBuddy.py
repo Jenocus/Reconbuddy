@@ -195,7 +195,7 @@ with tab3:
         "- Conversational AI for natural language queries on source documents and results\n"
         "- Knowledge base administration, review tools, and exportable reports"
     )
-    st.info(
+    st.success(
         "As a result, ReconBuddy not only automates transaction matching but also assists users in investigating, "
         "explaining, and continuously improving reconciliation outcomes through AI-driven insights and learning. "
     )
@@ -215,7 +215,7 @@ with tab3:
         "- Absence of common identifiers in some systems\n"
         "- Discrepancies that span multiple reports rather than a single source pair"
     )
-    st.info(
+    st.warning(
         "Addressing these challenges requires more advanced matching logic, multi-source relationship analysis "
         "and AI-assisted reasoning. The planned 4-way reconciliation capability will provide a more holistic and"
         "automated reconciliation process, enabling Finance officers to trace transactions across the entire "

@@ -100,7 +100,7 @@ with tab1:
     )
 
 with tab2:
-    st.subheader("Key AI and Design Decisions")
+    st.subheader("Key Design Decisions")
     st.markdown(
         "| Design Decision | Rationale |\n"
         "|---|---|\n"

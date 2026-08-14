@@ -121,14 +121,15 @@ with tab2:
 with tab3:
     st.subheader("AI Value Proposition")
     st.markdown(
-        "| AI Capability | Business Value |\n"
+        "| AI Capability | Technical Value |\n"
         "|---|---|\n"
-        "| AI-assisted identifier discovery | Helps analysts find likely matching keys across messy or differently named datasets, reducing the time spent on manual mapping and reducing missed matches. |\n"
-        "| Timing-difference detection | Flags likely date or period mismatches before AI explanation, improving the quality of reconciliation review and helping analysts focus on exceptions that matter. |\n"
-        "| Reasoning for unmatched transactions | Explains why amounts differ using transaction context, timing signals, and prior organisational patterns, so analysts can investigate discrepancies faster. |\n"
-        "| Knowledge-base learning | Reuses confirmed explanations and avoids previously rejected ones, making future reconciliations more consistent and aligned with business practice. |\n"
-        "| Human-in-the-loop governance | Keeps analysts in control by validating AI suggestions, recording feedback, and exporting traceable reconciliation outputs for auditability. |\n"
-        "| Conversational reconciliation support | Enables natural-language investigation of mismatches, document context, and reconciliation patterns without forcing analysts to manually filter large files. |"
+        "| Semantic identifier inference | Uses LLM reasoning over column names, field descriptions, and transaction context to infer likely matching keys when source data has different schema names, inconsistent labels, or embedded identifiers in free-text fields. |\n"
+        "| Deterministic pre-screening + AI analysis | Combines rule-based timing checks and aggregation logic with LLM reasoning, so the model focuses on true exceptions instead of spending tokens on already-resolved matches. |\n"
+        "| Contextual mismatch explanation | Analyses unmatched rows using amount variance, date proximity, transaction metadata, and earlier knowledge-base patterns to generate structured explanations for exceptions. |\n"
+        "| Knowledge-base grounded recommendations | Stores confirmed explanations and rejected explanations in a local JSON knowledge base, allowing future prompts to reuse approved reasoning and suppress previously invalidated causes. |\n"
+        "| Feedback-driven learning loop | Analyst approval and rejection signals are written back to the knowledge base, invalidating cached outputs and improving subsequent reconciliation quality without exposing raw transactional data. |\n"
+        "| Human-in-the-loop validation | Keeps the AI as a decision support layer while analysts review, approve, or reject outputs, preserving governance, traceability, and control over financial decisions. |\n"
+        "| Natural-language reconciliation assistant | Enables conversational querying over uploaded documents, reconciled results, and mismatch narratives, giving analysts a direct interface to interrogate data and investigate patterns without manual filtering. |"
     )
 
 st.divider()

@@ -123,10 +123,12 @@ with tab3:
     st.markdown(
         "| AI Capability | Business Value |\n"
         "|---|---|\n"
-        "| Semantic matching | Identifies shared identifiers based on meaning, not only exact field names. |\n"
-        "| Adaptive recommendations | Uses confirmed and flagged reasons to improve future suggestions. |\n"
-        "| Conversational investigation | Lets analysts query uploaded documents and reconciliation results using natural language. |\n"
-        "| Governed AI use | Keeps the analyst in control through confirmation, rejection, and exportable audit outputs. |"
+        "| AI-assisted identifier discovery | Helps analysts find likely matching keys across messy or differently named datasets, reducing the time spent on manual mapping and reducing missed matches. |\n"
+        "| Timing-difference detection | Flags likely date or period mismatches before AI explanation, improving the quality of reconciliation review and helping analysts focus on exceptions that matter. |\n"
+        "| Reasoning for unmatched transactions | Explains why amounts differ using transaction context, timing signals, and prior organisational patterns, so analysts can investigate discrepancies faster. |\n"
+        "| Knowledge-base learning | Reuses confirmed explanations and avoids previously rejected ones, making future reconciliations more consistent and aligned with business practice. |\n"
+        "| Human-in-the-loop governance | Keeps analysts in control by validating AI suggestions, recording feedback, and exporting traceable reconciliation outputs for auditability. |\n"
+        "| Conversational reconciliation support | Enables natural-language investigation of mismatches, document context, and reconciliation patterns without forcing analysts to manually filter large files. |"
     )
 
 st.divider()

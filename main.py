@@ -23,7 +23,7 @@ Welcome to ReconBuddy! Navigate using the **sidebar** to explore:
 - ⚖️ **2-way Match** — Reconcile amounts using a selected identifier pair and review unmatched rows
 - 🛠️ **Admin** — View, edit, and manage the knowledge base. Changes here affect what the LLM learns and applies during future reconciliations.
 - ℹ️ **About ReconBuddy** — Learn about the project scope, objectives, and tech stack
-- 🧭 **Methodology** — Understand the workflow behind ⚖️ 2-way Match
+- 🧭 **Methodology** — Understand the workflow and design decisions behind ⚖️ 2-way Match
 """)
 st.warning("IMPORTANT NOTICE: This web application is developed as a proof-of-concept prototype.\n\n"
            "The information provided here is NOT intended for actual usage and should not be relied "

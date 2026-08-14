@@ -68,7 +68,7 @@ st.markdown(
 tab1, tab2, tab3 = st.tabs(
     [
         "End-to-End Workflow",
-        "Key AI and Design Decisions",
+        "Key Design Decisions",
         "AI Value Proposition",
     ]
 )

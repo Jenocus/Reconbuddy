@@ -165,20 +165,14 @@ with tab3:
     st.write(
            "To address the first two objectives, development began with 🔍 Shared Identifier Finder capability. "
            "This component enables users to upload two documents and identify likely shared identifiers "
-           "before reconciliation is performed."
+           "showing confidence scores of the field pairings. "
     )
-    st.write(
+    st.info(
            "Rather than relying on hard-coded field-name matching, the solution uses semantic analysis and "
            "LLM reasoning to identify likely matching identifiers across heterogeneous datasets. "
            "It can interpret the meaning of fields, recognise relationships between differently named columns, "
            "and identify identifiers embedded within descriptions or other free-text fields. "    
        )
-    st.info(
-        "The system then proposes recommended identifier mappings and allows analysts to confirm "
-        "the preferred matching keys before reconciliation begins.\n"
-        "This capability forms the foundation for subsequent reconciliation processes and can also be used independently "
-        "to discover shared identifiers across disparate documents, even where reconciliation is not required."
-    )
 
     st.markdown("### Enhanced the Proof-of-Concept - ⚖️ 2-way Match")
     st.write("The original Proof-of-Concept focused on validating the core reconciliation capability by accepting "
@@ -187,8 +181,7 @@ with tab3:
     st.write("ReconBuddy has since evolved into a comprehensive AI-assisted 2-way reconciliation platform with "
              "capabilities beyond basic transaction matching, including:")
     st.markdown(
-        "- AI-assisted identifier discovery across heterogeneous and free-text fields\n"
-        "- Automated timing-difference detection for valid variances vs genuine exceptions\n"
+        "- Automated timing-difference detection\n"
         "- LLM-powered mismatch reason inference for unmatched transactions\n"
         "- Human-in-the-loop validation with inline feedback and approval workflows\n"
         "- Continuous learning knowledge base from analyst feedback\n"
